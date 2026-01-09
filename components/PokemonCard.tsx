@@ -12,6 +12,7 @@ interface Pokemon {
   stats: Array<{ name: string; value: number }>;
   spriteUrl: string;
   model3dUrl: string;
+  generation: number;
 }
 
 interface PokemonCardProps {
@@ -54,6 +55,19 @@ export default function PokemonCard({ pokemon }: PokemonCardProps) {
   // Estadísticas principales para mostrar
   const mainStats = pokemon.stats.slice(0, 6); // HP, Attack, Defense, Sp.Atk, Sp.Def, Speed
 
+  // Nombres de las generaciones
+  const generationNames: { [key: number]: string } = {
+    1: 'Kanto',
+    2: 'Johto',
+    3: 'Hoenn',
+    4: 'Sinnoh',
+    5: 'Unova',
+    6: 'Kalos',
+    7: 'Alola',
+    8: 'Galar',
+    9: 'Paldea',
+  };
+
   return (
     <>
       <div className="group relative overflow-hidden rounded-2xl bg-white shadow-lg transition-all hover:shadow-2xl hover:-translate-y-1">
@@ -72,7 +86,12 @@ export default function PokemonCard({ pokemon }: PokemonCardProps) {
               <h2 className="text-2xl font-black capitalize text-gray-900">
                 {pokemon.name}
               </h2>
-              <p className="text-sm font-semibold text-gray-500">#{pokemon.id.toString().padStart(3, '0')}</p>
+              <div className="flex items-center gap-2">
+                <p className="text-sm font-semibold text-gray-500">#{pokemon.id.toString().padStart(3, '0')}</p>
+                <span className="rounded-full bg-gradient-to-r from-purple-500 to-pink-500 px-2 py-0.5 text-xs font-bold text-white shadow-sm">
+                  Gen {pokemon.generation}
+                </span>
+              </div>
             </div>
             {/* Tipos */}
             <div className="flex flex-col gap-1">
