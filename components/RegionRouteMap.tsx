@@ -1,8 +1,10 @@
 import { Compass, MapPin } from 'lucide-react';
+import { getRegionMap } from '@/lib/region-maps';
 
 interface RegionRouteMapProps {
   locations: string[];
   accent: string;
+  region: string;
 }
 
 const MAP_POSITIONS = [
@@ -21,10 +23,12 @@ const MAP_POSITIONS = [
 export default function RegionRouteMap({
   locations,
   accent,
+  region,
 }: RegionRouteMapProps) {
   const uniqueLocations = Array.from(new Set(locations.filter(Boolean)));
   if (uniqueLocations.length === 0) return null;
 
+  const regionMap = getRegionMap(region);
   const mapLocations = uniqueLocations.slice(0, MAP_POSITIONS.length);
   const points = mapLocations.map((_, index) => MAP_POSITIONS[index]);
   const polyline = points.map((point) => `${point.x},${point.y}`).join(' ');
@@ -50,10 +54,10 @@ export default function RegionRouteMap({
               Mapa de la aventura
             </div>
             <h2 className="mt-1 text-2xl font-black">
-              Ruta visual de la región
+              Mapa de {regionMap.label}
             </h2>
             <p className="mt-1 text-sm text-white/75">
-              Mapa esquemático con las paradas principales en orden recomendado.
+              Mapa ilustrativo con las paradas principales en orden recomendado.
             </p>
           </div>
           <Compass className="h-8 w-8 text-white/40" aria-hidden="true" />
@@ -66,27 +70,52 @@ export default function RegionRouteMap({
             className="absolute inset-0 h-full w-full"
             aria-hidden="true"
           >
-            <path
-              d="M 8,50 C 4,35 15,18 32,16 C 46,14 50,6 66,12 C 82,18 94,30 91,46 C 89,58 94,70 82,80 C 70,90 54,84 42,88 C 28,92 12,84 9,70 Z"
-              fill="rgba(255,255,255,0.1)"
-              stroke="rgba(255,255,255,0.25)"
-              strokeWidth="0.5"
-            />
-            <path
-              d="M 18,50 C 20,38 30,28 44,28 C 58,28 66,20 78,28 C 88,34 86,48 80,58 C 74,68 62,72 50,70 C 38,68 26,72 20,64 Z"
-              fill="none"
-              stroke="rgba(255,255,255,0.16)"
-              strokeWidth="0.35"
-            />
+            {regionMap.paths.map((path, index) => (
+              <path
+                key={`region-path-${index}`}
+                d={path}
+                fill="rgba(255,255,255,0.13)"
+                stroke="rgba(255,255,255,0.35)"
+                strokeWidth="0.5"
+              />
+            ))}
+
+            {regionMap.circles?.map((circle, index) => (
+              <circle
+                key={`region-island-${index}`}
+                cx={circle.cx}
+                cy={circle.cy}
+                r={circle.r}
+                fill="rgba(255,255,255,0.13)"
+                stroke="rgba(255,255,255,0.35)"
+                strokeWidth="0.5"
+              />
+            ))}
+
+            {regionMap.lines?.map((line, index) => (
+              <path
+                key={`region-line-${index}`}
+                d={line}
+                fill="none"
+                stroke="rgba(255,255,255,0.2)"
+                strokeWidth="0.4"
+                strokeDasharray="1 1"
+              />
+            ))}
+
             <polyline
               points={polyline}
               fill="none"
-              stroke="rgba(255,255,255,0.7)"
+              stroke="rgba(255,255,255,0.75)"
               strokeWidth="0.6"
               strokeDasharray="2 1.5"
               strokeLinecap="round"
             />
           </svg>
+
+          <span className="absolute left-2 top-2 rounded-full bg-black/30 px-2 py-0.5 text-[9px] font-black uppercase tracking-widest text-white/80">
+            Región de {regionMap.label}
+          </span>
 
           {points.map((point, index) => (
             <div
@@ -106,7 +135,7 @@ export default function RegionRouteMap({
           ))}
 
           <span className="absolute bottom-2 left-2 rounded-full bg-black/25 px-2 py-0.5 text-[9px] font-bold uppercase tracking-widest text-white/70">
-            Mapa esquemático
+            Mapa ilustrativo
           </span>
         </div>
 

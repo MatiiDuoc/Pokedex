@@ -19,7 +19,7 @@ checklists por juego, guías paso a paso y visor 3D.
   para reordenar, cobertura ofensiva, debilidades compartidas y sugerencias
   automáticas de Pokémon que cubren los huecos del equipo (pool ampliado a 65
   especies).
-- **Guías visuales** con mapa esquemático de la región, pines de ruta,
+- **Guías visuales** con mapas SVG ilustrativos de cada región, pines de ruta,
   insignias y un Pokémon representativo del tipo de cada gimnasio.
 - **Modo oscuro** con toggle claro/oscuro, persistencia en localStorage y
   respeto a la preferencia del sistema.
@@ -27,6 +27,8 @@ checklists por juego, guías paso a paso y visor 3D.
   completa, rotación pausable, progreso de carga, precarga al pasar el ratón,
   caché de modelos en el Service Worker, ajuste de calidad en móvil y fallback
   a imagen.
+- **Galería 3D** (`/pokedex/3d`) con una selección de modelos interactivos,
+  modo shiny y acceso a la ficha completa de cada Pokémon.
 - **Legendarios y míticos** identificados con badges y filtros, incluyendo
   ultraentes y las especies de todas las generaciones.
 - **Navegación móvil** con barra inferior, iconos Lucide, skeletons de carga,

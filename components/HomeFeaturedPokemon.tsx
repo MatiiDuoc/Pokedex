@@ -45,6 +45,12 @@ export default function HomeFeaturedPokemon({
             {shiny ? 'Shiny activo' : 'Ver shinies'}
           </button>
           <Link
+            href="/pokedex/3d"
+            className="rounded-full bg-indigo-600 px-4 py-2 text-sm font-bold text-white transition hover:bg-indigo-700"
+          >
+            Galería 3D
+          </Link>
+          <Link
             href="/pokedex"
             className="rounded-full bg-red-600 px-4 py-2 text-sm font-bold text-white transition hover:bg-red-700"
           >

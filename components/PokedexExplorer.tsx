@@ -2,7 +2,7 @@
 
 import Link from 'next/link';
 import { useDeferredValue, useMemo, useState } from 'react';
-import { Sparkles } from 'lucide-react';
+import { Box, Sparkles } from 'lucide-react';
 import Pagination from './Pagination';
 import {
   LEGENDARY_FILTERS,
@@ -223,19 +223,27 @@ export default function PokedexExplorer({ pokemon }: PokedexExplorerProps) {
               ? 'Cargando filtro de tipo...'
               : `${filtered.length} Pokémon encontrados`}
           </div>
-          <button
-            type="button"
-            onClick={() => setShiny((value) => !value)}
-            aria-pressed={shiny}
-            className={`inline-flex items-center gap-2 rounded-full px-4 py-2 text-sm font-bold transition ${
-              shiny
-                ? 'bg-gradient-to-r from-yellow-300 to-amber-400 text-amber-950 shadow-md'
-                : 'bg-white text-gray-700 shadow-sm hover:bg-gray-50'
-            }`}
-          >
-            <Sparkles className="h-4 w-4" />
-            {shiny ? 'Modo shiny activo' : 'Ver shinies'}
-          </button>
+          <div className="flex items-center gap-2">
+            <Link
+              href="/pokedex/3d"
+              className="inline-flex items-center gap-2 rounded-full bg-indigo-600 px-4 py-2 text-sm font-bold text-white shadow-sm transition hover:bg-indigo-700"
+            >
+              <Box className="h-4 w-4" /> Galería 3D
+            </Link>
+            <button
+              type="button"
+              onClick={() => setShiny((value) => !value)}
+              aria-pressed={shiny}
+              className={`inline-flex items-center gap-2 rounded-full px-4 py-2 text-sm font-bold transition ${
+                shiny
+                  ? 'bg-gradient-to-r from-yellow-300 to-amber-400 text-amber-950 shadow-md'
+                  : 'bg-white text-gray-700 shadow-sm hover:bg-gray-50'
+              }`}
+            >
+              <Sparkles className="h-4 w-4" />
+              {shiny ? 'Modo shiny activo' : 'Ver shinies'}
+            </button>
+          </div>
         </div>
 
         <section className="grid grid-cols-2 gap-4 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-6">

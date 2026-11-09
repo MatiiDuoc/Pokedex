@@ -475,6 +475,7 @@ export default function GameGuideView({
               <RegionRouteMap
                 locations={game.gyms.map((challenge) => challenge.location)}
                 accent={game.accent}
+                region={game.region}
               />
 
               <div className="rounded-2xl bg-white p-5 shadow-sm">
