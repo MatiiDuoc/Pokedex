@@ -12,7 +12,7 @@ interface AuthFormProps {
 
 export default function AuthForm({ mode, nextPath }: AuthFormProps) {
   const router = useRouter();
-  const { user, login, register, authLoading } = useAccount();
+  const { user, login, register, authLoading, registrationOpen } = useAccount();
   const [username, setUsername] = useState('');
   const [password, setPassword] = useState('');
   const [confirmPassword, setConfirmPassword] = useState('');
@@ -77,6 +77,37 @@ export default function AuthForm({ mode, nextPath }: AuthFormProps) {
             className="rounded-lg bg-red-600 px-4 py-3 text-sm font-bold text-white transition hover:bg-red-700"
           >
             Ir a las guías
+          </Link>
+          <Link
+            href="/"
+            className="rounded-lg bg-gray-100 px-4 py-3 text-sm font-bold text-gray-800 transition hover:bg-gray-200"
+          >
+            Volver al inicio
+          </Link>
+        </div>
+      </div>
+    );
+  }
+
+  if (isRegister && !registrationOpen) {
+    return (
+      <div className="w-full max-w-md rounded-2xl bg-white p-8 text-center shadow-xl">
+        <div className="mx-auto flex h-14 w-14 items-center justify-center rounded-full bg-amber-100 text-2xl">
+          🔒
+        </div>
+        <h1 className="mt-4 text-2xl font-black text-gray-900">
+          Registro cerrado
+        </h1>
+        <p className="mt-2 text-sm text-gray-600">
+          Este Pokédex es privado y no acepta cuentas nuevas. Si ya tienes
+          acceso, inicia sesión con tu usuario y contraseña.
+        </p>
+        <div className="mt-6 flex flex-col gap-2">
+          <Link
+            href="/login"
+            className="rounded-lg bg-red-600 px-4 py-3 text-sm font-bold text-white transition hover:bg-red-700"
+          >
+            Iniciar sesión
           </Link>
           <Link
             href="/"
@@ -201,13 +232,31 @@ export default function AuthForm({ mode, nextPath }: AuthFormProps) {
       </form>
 
       <p className="mt-5 text-center text-sm text-gray-600">
-        {isRegister ? '¿Ya tienes cuenta?' : '¿Todavía no tienes cuenta?'}{' '}
-        <Link
-          href={isRegister ? '/login' : '/registro'}
-          className="font-bold text-red-600 hover:text-red-700"
-        >
-          {isRegister ? 'Inicia sesión' : 'Crea una gratis'}
-        </Link>
+        {isRegister ? (
+          <>
+            ¿Ya tienes cuenta?{' '}
+            <Link
+              href="/login"
+              className="font-bold text-red-600 hover:text-red-700"
+            >
+              Inicia sesión
+            </Link>
+          </>
+        ) : registrationOpen ? (
+          <>
+            ¿Todavía no tienes cuenta?{' '}
+            <Link
+              href="/registro"
+              className="font-bold text-red-600 hover:text-red-700"
+            >
+              Crea una gratis
+            </Link>
+          </>
+        ) : (
+          <span className="text-xs font-semibold text-gray-400">
+            El registro público está cerrado.
+          </span>
+        )}
       </p>
 
       <p className="mt-4 text-center text-xs text-gray-400">

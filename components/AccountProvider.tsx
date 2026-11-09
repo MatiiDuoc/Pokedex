@@ -33,6 +33,7 @@ interface AccountContextValue {
   authLoading: boolean;
   dataLoading: boolean;
   syncError: string | null;
+  registrationOpen: boolean;
   guides: Record<string, GameProgress>;
   team: PokemonBasic[];
   login: (username: string, password: string) => Promise<AuthResult>;
@@ -106,6 +107,7 @@ export function AccountProvider({ children }: { children: ReactNode }) {
   const [authLoading, setAuthLoading] = useState(true);
   const [dataLoading, setDataLoading] = useState(false);
   const [syncError, setSyncError] = useState<string | null>(null);
+  const [registrationOpen, setRegistrationOpen] = useState(false);
   const [guides, setGuides] = useState<Record<string, GameProgress>>({});
   const [team, setTeam] = useState<PokemonBasic[]>([]);
 
@@ -249,12 +251,16 @@ export function AccountProvider({ children }: { children: ReactNode }) {
     const bootstrap = async () => {
       try {
         const response = await fetch('/api/auth/me', { cache: 'no-store' });
-        const data = (await response.json()) as { user: AuthUser | null };
+        const data = (await response.json()) as {
+          user: AuthUser | null;
+          registrationOpen?: boolean;
+        };
 
         if (cancelled) return;
 
         setUser(data.user);
         userRef.current = data.user;
+        setRegistrationOpen(Boolean(data.registrationOpen));
 
         if (data.user) {
           await loadAccount(data.user);
@@ -332,6 +338,7 @@ export function AccountProvider({ children }: { children: ReactNode }) {
         const data = (await response.json()) as { user: AuthUser };
         setUser(data.user);
         userRef.current = data.user;
+        setRegistrationOpen(false);
         setGuides({});
         setTeam([]);
         return { ok: true };
@@ -428,9 +435,13 @@ export function AccountProvider({ children }: { children: ReactNode }) {
     setAuthLoading(true);
     try {
       const response = await fetch('/api/auth/me', { cache: 'no-store' });
-      const data = (await response.json()) as { user: AuthUser | null };
+      const data = (await response.json()) as {
+        user: AuthUser | null;
+        registrationOpen?: boolean;
+      };
       setUser(data.user);
       userRef.current = data.user;
+      setRegistrationOpen(Boolean(data.registrationOpen));
       if (data.user) await loadAccount(data.user);
     } finally {
       setAuthLoading(false);
@@ -443,6 +454,7 @@ export function AccountProvider({ children }: { children: ReactNode }) {
       authLoading,
       dataLoading,
       syncError,
+      registrationOpen,
       guides,
       team,
       login,
@@ -458,6 +470,7 @@ export function AccountProvider({ children }: { children: ReactNode }) {
       authLoading,
       dataLoading,
       syncError,
+      registrationOpen,
       guides,
       team,
       login,

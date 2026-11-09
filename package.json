@@ -10,7 +10,11 @@
     "typecheck": "tsc --noEmit",
     "test": "vitest run",
     "test:watch": "vitest",
-    "db:migrate": "node --env-file=.env.local scripts/db-migrate.mjs"
+    "db:migrate": "node --env-file=.env.local scripts/db-migrate.mjs",
+    "users:list": "node --env-file=.env.local scripts/user-admin.mjs list",
+    "users:create": "node --env-file=.env.local scripts/user-admin.mjs create",
+    "users:password": "node --env-file=.env.local scripts/user-admin.mjs password",
+    "users:delete": "node --env-file=.env.local scripts/user-admin.mjs delete"
   },
   "dependencies": {
     "@neondatabase/serverless": "^1.2.0",

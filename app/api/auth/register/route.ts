@@ -7,6 +7,7 @@ import {
   registerUser,
 } from '@/lib/auth';
 import { isDatabaseConfigured } from '@/lib/db';
+import { isRegistrationOpen } from '@/lib/registration';
 import { checkRateLimit, RATE_LIMITS } from '@/lib/rate-limit';
 import { isValidPassword, isValidUsername } from '@/lib/validation';
 
@@ -22,6 +23,16 @@ export async function POST(request: Request) {
     return NextResponse.json(
       { error: 'La base de datos no está configurada' },
       { status: 503 }
+    );
+  }
+
+  if (!(await isRegistrationOpen())) {
+    return NextResponse.json(
+      {
+        error:
+          'El registro público está cerrado. Inicia sesión con tu cuenta.',
+      },
+      { status: 403, headers: { 'Cache-Control': 'no-store' } }
     );
   }
 

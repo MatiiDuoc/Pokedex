@@ -172,10 +172,10 @@ export default async function Home() {
                 Explorar guías
               </Link>
               <Link
-                href="/registro"
+                href="/cuenta"
                 className="rounded-xl border border-white/25 bg-white/10 px-5 py-3 text-sm font-black text-white transition hover:bg-white/20"
               >
-                Crear cuenta gratis
+                Mi progreso
               </Link>
             </div>
           </div>

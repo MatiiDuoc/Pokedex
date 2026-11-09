@@ -13,7 +13,7 @@ import {
 
 export default function PokemonTeam() {
   const { team, maxSize, remove, clear, requiresLogin, hydrated } = useTeam();
-  const { user, logout, syncError } = useAccount();
+  const { user, logout, syncError, registrationOpen } = useAccount();
   const [isOpen, setIsOpen] = useState(false);
 
   useEffect(() => {
@@ -119,12 +119,14 @@ export default function PokemonTeam() {
                     >
                       Iniciar sesión
                     </Link>
-                    <Link
-                      href="/registro"
-                      className="rounded-lg bg-gray-100 px-4 py-2.5 text-sm font-bold text-gray-800 transition hover:bg-gray-200"
-                    >
-                      Crear cuenta
-                    </Link>
+                    {registrationOpen && (
+                      <Link
+                        href="/registro"
+                        className="rounded-lg bg-gray-100 px-4 py-2.5 text-sm font-bold text-gray-800 transition hover:bg-gray-200"
+                      >
+                        Crear cuenta
+                      </Link>
+                    )}
                   </div>
                 </div>
               </div>

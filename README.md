@@ -109,6 +109,29 @@ Tablas creadas: `users`, `sessions`, `progress` y `rate_limits`.
 - `PUT /api/account` — guarda `{ slug, data }` (o `__team__` para el equipo).
 - `DELETE /api/account` — borra todo el progreso del usuario.
 
+### Registro privado
+
+Por defecto el registro público se abre **solo si todavía no existe ningún
+usuario**. En cuanto se crea la primera cuenta, el registro se cierra
+automáticamente. Así puedes crear tu cuenta inicial y dejar la aplicación
+privada para el resto.
+
+- `/registro` muestra “Registro cerrado” cuando ya hay usuarios.
+- `/api/auth/register` rechaza nuevas cuentas con `403`.
+- El botón “Crear cuenta” desaparece de la cabecera y de los paneles.
+- Si necesitas abrirlo temporalmente, define `ALLOW_REGISTRATION=true` en
+  Vercel y vuelve a desplegar. Para cerrarlo de nuevo, cámbialo a `false` o
+  elimina la variable.
+
+También puedes gestionar cuentas desde la terminal contra la base de datos:
+
+```bash
+npm run users:list
+npm run users:create -- nuevo_usuario contraseña123
+npm run users:password -- mi_usuario nueva_contraseña
+npm run users:delete -- usuario_a_borrar --yes
+```
+
 Detalles de seguridad:
 
 - Contraseñas con **scrypt** (N=16384, r=8, p=1) y salt aleatorio.
@@ -183,6 +206,7 @@ Después del despliegue:
 | --- | --- | --- |
 | `DATABASE_URL` | Sí | Cadena de conexión Postgres (Neon). |
 | `NEXT_PUBLIC_SITE_URL` | No | URL canónica del sitio. |
+| `ALLOW_REGISTRATION` | No | `true` abre el registro público; `false` lo cierra. Sin definir, solo permite crear la primera cuenta. |
 
 En Vercel, Neon inyecta `DATABASE_URL` (y variables `POSTGRES_*`) al conectar
 el recurso. El código acepta `DATABASE_URL` o `POSTGRES_URL`.

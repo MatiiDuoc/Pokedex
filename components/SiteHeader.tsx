@@ -14,7 +14,7 @@ const links = [
 
 export default function SiteHeader() {
   const pathname = usePathname();
-  const { user, authLoading, logout, syncError } = useAccount();
+  const { user, authLoading, logout, syncError, registrationOpen } = useAccount();
 
   return (
     <header className="sticky top-0 z-50 border-b border-gray-200 bg-white/95 backdrop-blur">
@@ -103,12 +103,14 @@ export default function SiteHeader() {
                 >
                   Entrar
                 </Link>
-                <Link
-                  href="/registro"
-                  className="hidden rounded-lg bg-gray-100 px-3 py-2 text-sm font-bold text-gray-700 transition hover:bg-gray-200 sm:inline"
-                >
-                  Crear cuenta
-                </Link>
+                {registrationOpen && (
+                  <Link
+                    href="/registro"
+                    className="hidden rounded-lg bg-gray-100 px-3 py-2 text-sm font-bold text-gray-700 transition hover:bg-gray-200 sm:inline"
+                  >
+                    Crear cuenta
+                  </Link>
+                )}
               </>
             )}
           </div>

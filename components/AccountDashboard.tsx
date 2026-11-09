@@ -5,8 +5,16 @@ import { useState } from 'react';
 import { useAccount } from '@/components/AccountProvider';
 
 export default function AccountDashboard() {
-  const { user, authLoading, dataLoading, guides, team, logout, resetAll } =
-    useAccount();
+  const {
+    user,
+    authLoading,
+    dataLoading,
+    registrationOpen,
+    guides,
+    team,
+    logout,
+    resetAll,
+  } = useAccount();
   const [message, setMessage] = useState<string | null>(null);
   const [resetting, setResetting] = useState(false);
 
@@ -39,12 +47,14 @@ export default function AccountDashboard() {
             >
               Iniciar sesión
             </Link>
-            <Link
-              href="/registro"
-              className="rounded-lg bg-gray-100 px-4 py-3 text-sm font-bold text-gray-800 transition hover:bg-gray-200"
-            >
-              Crear cuenta
-            </Link>
+            {registrationOpen && (
+              <Link
+                href="/registro"
+                className="rounded-lg bg-gray-100 px-4 py-3 text-sm font-bold text-gray-800 transition hover:bg-gray-200"
+              >
+                Crear cuenta
+              </Link>
+            )}
           </div>
         </div>
       </div>

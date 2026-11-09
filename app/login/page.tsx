@@ -6,6 +6,10 @@ export const metadata: Metadata = {
   title: 'Iniciar sesión',
   description:
     'Accede a tu cuenta para guardar tu equipo, tus checklists y el progreso de tus guías Pokémon.',
+  robots: {
+    index: false,
+    follow: false,
+  },
 };
 
 interface LoginPageProps {

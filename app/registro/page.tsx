@@ -5,7 +5,11 @@ import { safeNextPath } from '@/lib/navigation';
 export const metadata: Metadata = {
   title: 'Crear cuenta',
   description:
-    'Crea una cuenta gratuita para guardar tu equipo y el progreso de todas tus guías Pokémon.',
+    'Registro de cuenta para guardar tu equipo y el progreso de tus guías Pokémon.',
+  robots: {
+    index: false,
+    follow: false,
+  },
 };
 
 interface RegisterPageProps {
