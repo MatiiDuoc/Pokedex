@@ -1,122 +1,165 @@
-export interface PokemonBasic {
+import type {
+  PaginatedResponse,
+  PokemonBasic,
+  PokemonStat,
+} from '@/types/pokemon';
+import { getGenerationFromId } from '@/lib/pokemon';
+
+const POKEAPI_BASE = 'https://pokeapi.co/api/v2';
+const REVALIDATE_SECONDS = 60 * 60 * 24; // 24 horas
+const REQUEST_TIMEOUT_MS = 15_000;
+const MAX_POKEMON = 1025;
+
+interface PokeApiNamedResource {
   name: string;
   url: string;
+}
+
+interface PokeApiListResponse {
+  count: number;
+  results: PokeApiNamedResource[];
+}
+
+interface PokeApiDetailResponse {
   id: number;
+  name: string;
   height: number;
   weight: number;
-  types: string[];
-  stats: Array<{ name: string; value: number }>;
-  spriteUrl: string;
-  model3dUrl: string;
-  generation: number;
+  types: Array<{ slot: number; type: PokeApiNamedResource }>;
+  stats: Array<{ base_stat: number; stat: PokeApiNamedResource }>;
+  sprites: {
+    front_default: string | null;
+    other?: {
+      'official-artwork'?: { front_default: string | null };
+    };
+  };
 }
 
-export interface PaginatedResponse {
-  pokemon: PokemonBasic[];
-  total: number;
-  hasMore: boolean;
+async function fetchJson<T>(url: string, revalidate = REVALIDATE_SECONDS): Promise<T> {
+  const response = await fetch(url, {
+    next: { revalidate },
+    signal: AbortSignal.timeout(REQUEST_TIMEOUT_MS),
+  });
+
+  if (!response.ok) {
+    throw new Error(`PokeAPI respondió ${response.status} para ${url}`);
+  }
+
+  return (await response.json()) as T;
 }
 
-// Función helper para determinar la generación según el ID
-function getGenerationFromId(id: number): number {
-  if (id <= 151) return 1;      // Kanto
-  if (id <= 251) return 2;      // Johto
-  if (id <= 386) return 3;      // Hoenn
-  if (id <= 493) return 4;      // Sinnoh
-  if (id <= 649) return 5;      // Unova
-  if (id <= 721) return 6;      // Kalos
-  if (id <= 809) return 7;      // Alola
-  if (id <= 905) return 8;      // Galar
-  if (id <= 1025) return 9;     // Paldea
-  return 9; // Por defecto, generaciones futuras
+export function getArtworkUrl(id: number): string {
+  return `https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/pokemon/other/official-artwork/${id}.png`;
 }
 
-// Obtener total de Pokémon disponibles
+export function getSpriteUrl(id: number): string {
+  return `https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/pokemon/${id}.png`;
+}
+
+export function getIdFromResourceUrl(url: string): number | null {
+  const match = url.match(/\/(\d+)\/?$/);
+  if (!match) return null;
+  const id = Number.parseInt(match[1], 10);
+  return Number.isFinite(id) ? id : null;
+}
+
+/** Total de especies del Pokédex Nacional (sin formas alternativas). */
 export async function getTotalPokemon(): Promise<number> {
-  const response = await fetch('https://pokeapi.co/api/v2/pokemon?limit=1');
-  const data = await response.json();
-  return data.count; // Actualmente ~1300+ Pokémon
+  const data = await fetchJson<PokeApiListResponse>(
+    `${POKEAPI_BASE}/pokemon-species?limit=1`
+  );
+  return Math.min(data.count, MAX_POKEMON);
 }
 
-// Obtener Pokémon con paginación
-export async function getPokemonPaginated(
-  offset: number = 0,
-  limit: number = 20
-): Promise<PaginatedResponse> {
-  const totalCount = await getTotalPokemon();
-  const response = await fetch(
-    `https://pokeapi.co/api/v2/pokemon?limit=${limit}&offset=${offset}`
-  );
-  const data = await response.json();
+async function getPokemonDetail(resource: PokeApiNamedResource): Promise<PokemonBasic | null> {
+  try {
+    const details = await fetchJson<PokeApiDetailResponse>(resource.url);
+    const id = details.id;
 
-  // Procesar en lotes para evitar sobrecargar la API
-  const batchSize = 100; // Aumentado a 100 para mejor rendimiento
+    const officialArtwork =
+      details.sprites.other?.['official-artwork']?.front_default ?? '';
+    const spriteUrl = officialArtwork || details.sprites.front_default || getArtworkUrl(id);
+
+    const stats: PokemonStat[] = details.stats.map((stat) => ({
+      name: stat.stat.name,
+      value: stat.base_stat,
+    }));
+
+    return {
+      name: details.name,
+      url: resource.url,
+      id,
+      height: details.height,
+      weight: details.weight,
+      types: details.types
+        .sort((a, b) => a.slot - b.slot)
+        .map((entry) => entry.type.name),
+      stats,
+      spriteUrl,
+      // Los modelos 3D no se usan todavía en la interfaz.
+      model3dUrl: '',
+      generation: getGenerationFromId(id),
+    };
+  } catch (error) {
+    console.error(`No se pudo cargar ${resource.name}:`, error);
+    return null;
+  }
+}
+
+/** Obtiene Pokémon con paginación y detalles básicos. */
+export async function getPokemonPaginated(
+  offset = 0,
+  limit = 20
+): Promise<PaginatedResponse> {
+  const safeOffset = Math.max(0, Number.isFinite(offset) ? Math.floor(offset) : 0);
+  const safeLimit = Math.min(
+    MAX_POKEMON,
+    Math.max(1, Number.isFinite(limit) ? Math.floor(limit) : 20)
+  );
+
+  const [total, list] = await Promise.all([
+    getTotalPokemon(),
+    fetchJson<PokeApiListResponse>(
+      `${POKEAPI_BASE}/pokemon?limit=${safeLimit}&offset=${safeOffset}`
+    ),
+  ]);
+
+  // Procesamos en lotes para no saturar PokeAPI ni el runtime de Vercel.
+  const batchSize = 40;
   const pokemonWithDetails: PokemonBasic[] = [];
 
-  for (let i = 0; i < data.results.length; i += batchSize) {
-    const batch = data.results.slice(i, i + batchSize);
-    const batchResults = await Promise.all(
-      batch.map(async (pokemon: any) => {
-        try {
-          const detailResponse = await fetch(pokemon.url, {
-            next: { revalidate: 86400 } // Cache por 24 horas
-          });
-          
-          if (!detailResponse.ok) {
-            throw new Error(`HTTP error! status: ${detailResponse.status}`);
-          }
-          
-          const details = await detailResponse.json();
-          const pokemonId = details.id;
-
-          return {
-            name: pokemon.name,
-            url: pokemon.url,
-            id: pokemonId,
-            height: details.height,
-            weight: details.weight,
-            types: details.types.map((t: any) => t.type.name),
-            stats: details.stats.map((s: any) => ({
-              name: s.stat.name,
-              value: s.base_stat,
-            })),
-            spriteUrl: details.sprites.other['official-artwork'].front_default || '',
-            model3dUrl: `https://cdn.jsdelivr.net/npm/pokémon-3d@latest/models/${pokemonId}.gltf`,
-            generation: getGenerationFromId(pokemonId),
-          };
-        } catch (error) {
-          console.error(`Error fetching ${pokemon.name}:`, error);
-          return null;
-        }
-      })
+  for (let index = 0; index < list.results.length; index += batchSize) {
+    const batch = list.results.slice(index, index + batchSize);
+    const batchResults = await Promise.all(batch.map(getPokemonDetail));
+    pokemonWithDetails.push(
+      ...batchResults.filter((pokemon): pokemon is PokemonBasic => pokemon !== null)
     );
-    
-    // Filtrar resultados nulos (errores) y agregar al array
-    pokemonWithDetails.push(...batchResults.filter((p): p is PokemonBasic => p !== null));
   }
 
   return {
     pokemon: pokemonWithDetails,
-    total: totalCount,
-    hasMore: offset + limit < totalCount,
+    total,
+    hasMore: safeOffset + safeLimit < total,
   };
 }
 
-// Obtener Pokémon por generación
-export async function getPokemonByGeneration(generation: number): Promise<PokemonBasic[]> {
-  const generationRanges: Record<number, { offset: number; limit: number }> = {
-    1: { offset: 0, limit: 151 },      // Kanto
-    2: { offset: 151, limit: 100 },    // Johto
-    3: { offset: 251, limit: 135 },    // Hoenn
-    4: { offset: 386, limit: 107 },    // Sinnoh
-    5: { offset: 493, limit: 156 },    // Unova
-    6: { offset: 649, limit: 72 },     // Kalos
-    7: { offset: 721, limit: 88 },     // Alola
-    8: { offset: 809, limit: 96 },     // Galar
-    9: { offset: 905, limit: 120 },    // Paldea (aprox)
-  };
+const GENERATION_RANGES: Record<number, { offset: number; limit: number }> = {
+  1: { offset: 0, limit: 151 },
+  2: { offset: 151, limit: 100 },
+  3: { offset: 251, limit: 135 },
+  4: { offset: 386, limit: 107 },
+  5: { offset: 493, limit: 156 },
+  6: { offset: 649, limit: 72 },
+  7: { offset: 721, limit: 88 },
+  8: { offset: 809, limit: 96 },
+  9: { offset: 905, limit: 120 },
+};
 
-  const range = generationRanges[generation];
+/** Obtiene los Pokémon de una generación concreta (1-9). */
+export async function getPokemonByGeneration(
+  generation: number
+): Promise<PokemonBasic[]> {
+  const range = GENERATION_RANGES[generation];
   if (!range) throw new Error('Generación no válida');
 
   const result = await getPokemonPaginated(range.offset, range.limit);

@@ -12,6 +12,9 @@ const eslintConfig = defineConfig([
     "out/**",
     "build/**",
     "next-env.d.ts",
+    // Historial local del editor y dependencias.
+    ".history/**",
+    "node_modules/**",
   ]),
 ]);
 
