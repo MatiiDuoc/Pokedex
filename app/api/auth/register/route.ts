@@ -90,5 +90,8 @@ export async function POST(request: Request) {
   await createSession(result.user.id);
   await cleanupSessions().catch(() => undefined);
 
-  return NextResponse.json({ user: result.user }, { status: 201 });
+  return NextResponse.json(
+    { user: result.user },
+    { status: 201, headers: { 'Cache-Control': 'no-store' } }
+  );
 }

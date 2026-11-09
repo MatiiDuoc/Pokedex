@@ -10,5 +10,8 @@ export async function POST(request: Request) {
   }
 
   await destroySession();
-  return NextResponse.json({ ok: true });
+  return NextResponse.json(
+    { ok: true },
+    { headers: { 'Cache-Control': 'no-store' } }
+  );
 }

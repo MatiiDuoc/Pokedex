@@ -77,5 +77,5 @@ export async function POST(request: Request) {
   await createSession(user.id);
   await cleanupSessions().catch(() => undefined);
 
-  return NextResponse.json({ user });
+  return NextResponse.json({ user }, { headers: { 'Cache-Control': 'no-store' } });
 }
