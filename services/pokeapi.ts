@@ -123,14 +123,21 @@ export async function getPokemonByIds(ids: number[]): Promise<PokemonBasic[]> {
     new Set(ids.filter((id) => Number.isInteger(id) && id >= 1 && id <= MAX_POKEMON))
   );
 
-  const results = await Promise.all(
-    uniqueIds.map((id) =>
-      getPokemonDetail({
-        name: String(id),
-        url: `${POKEAPI_BASE}/pokemon/${id}`,
-      })
-    )
-  );
+  const results: Array<PokemonBasic | null> = [];
+  const batchSize = 20;
+
+  for (let index = 0; index < uniqueIds.length; index += batchSize) {
+    const batch = uniqueIds.slice(index, index + batchSize);
+    const batchResults = await Promise.all(
+      batch.map((id) =>
+        getPokemonDetail({
+          name: String(id),
+          url: `${POKEAPI_BASE}/pokemon/${id}`,
+        })
+      )
+    );
+    results.push(...batchResults);
+  }
 
   const byId = new Map(
     results

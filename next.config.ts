@@ -8,13 +8,14 @@ const contentSecurityPolicy = [
   "form-action 'self'",
   "frame-ancestors 'none'",
   "object-src 'none'",
-  `script-src 'self' 'unsafe-inline'${isProduction ? '' : " 'unsafe-eval'"}`,
+  `script-src 'self' 'unsafe-inline' 'wasm-unsafe-eval' https://www.gstatic.com${isProduction ? '' : " 'unsafe-eval'"}`,
   "style-src 'self' 'unsafe-inline'",
   "img-src 'self' data: blob: https:",
   "font-src 'self' data:",
-  `connect-src 'self' https://pokeapi.co https://raw.githubusercontent.com${isProduction ? '' : ' ws: wss:'}`,
+  `connect-src 'self' https://pokeapi.co https://raw.githubusercontent.com https://www.gstatic.com blob:${isProduction ? '' : ' ws: wss:'}`,
   "manifest-src 'self'",
   "worker-src 'self' blob:",
+  "child-src 'self' blob:",
   ...(isProduction ? ["upgrade-insecure-requests"] : []),
 ].join('; ');
 

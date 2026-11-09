@@ -49,6 +49,12 @@ export default function PokemonDetailHero({
   const gradient =
     TYPE_GRADIENTS[types[0] ?? 'normal'] ?? 'from-red-500 to-orange-500';
 
+  const preload3d = () => {
+    void import('./Pokemon3DViewer').then((module) =>
+      module.preloadPokemonModel(id)
+    );
+  };
+
   const handleCapture = () => {
     if (requiresLogin) {
       router.push(`/login?next=${encodeURIComponent(pathname)}`);
@@ -190,6 +196,8 @@ export default function PokemonDetailHero({
               <button
                 type="button"
                 onClick={() => setShow3d(true)}
+                onMouseEnter={preload3d}
+                onFocus={preload3d}
                 className="inline-flex items-center gap-2 rounded-xl border border-white/30 bg-white/10 px-5 py-3 text-sm font-black text-white backdrop-blur transition hover:bg-white/20"
               >
                 <Box className="h-4 w-4" />

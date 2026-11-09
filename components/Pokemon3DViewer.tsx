@@ -28,6 +28,18 @@ const MODEL_BASES = {
 };
 
 const availabilityCache = new Map<number, { regular: boolean; shiny: boolean }>();
+const preloadedIds = new Set<number>();
+
+export function preloadPokemonModel(pokemonId: number) {
+  if (preloadedIds.has(pokemonId)) return;
+  preloadedIds.add(pokemonId);
+
+  try {
+    useGLTF.preload(`${MODEL_BASES.regular}/${pokemonId}.glb`);
+  } catch {
+    preloadedIds.delete(pokemonId);
+  }
+}
 
 interface ViewerProps {
   pokemonId: number;
@@ -125,7 +137,17 @@ export default function Pokemon3DViewer({
   }>({ regular: null, shiny: null });
   const [animations, setAnimations] = useState<string[]>([]);
   const [selectedAnimation, setSelectedAnimation] = useState('');
+  const [slow, setSlow] = useState(false);
   const { progress, active } = useProgress();
+
+  const isMobile =
+    typeof window !== 'undefined' &&
+    window.matchMedia('(max-width: 768px)').matches;
+
+  useEffect(() => {
+    const timeout = window.setTimeout(() => setSlow(true), 15_000);
+    return () => window.clearTimeout(timeout);
+  }, []);
 
   useEffect(() => {
     const cached = availabilityCache.get(pokemonId);
@@ -205,8 +227,8 @@ export default function Pokemon3DViewer({
     <ModelErrorBoundary fallback={fallback}>
       <Canvas
         camera={{ position: [0, 0.2, 4.2], fov: 42 }}
-        dpr={[1, 2]}
-        shadows
+        dpr={isMobile ? [1, 1.5] : [1, 2]}
+        shadows={!isMobile}
         gl={{ alpha: true, antialias: true }}
         className="h-full w-full"
       >
@@ -232,13 +254,15 @@ export default function Pokemon3DViewer({
             selectedAnimation={selectedAnimation}
             onAnimations={handleAnimations}
           />
-          <ContactShadows
-            position={[0, -1.45, 0]}
-            opacity={0.35}
-            scale={6}
-            blur={2.5}
-            far={4}
-          />
+          {!isMobile && (
+            <ContactShadows
+              position={[0, -1.45, 0]}
+              opacity={0.35}
+              scale={6}
+              blur={2.5}
+              far={4}
+            />
+          )}
         </Suspense>
         <OrbitControls
           enablePan={false}
@@ -273,6 +297,12 @@ export default function Pokemon3DViewer({
       {shiny && !availability.shiny && (
         <div className="absolute right-3 top-3 z-10 rounded-full bg-amber-100 px-3 py-1.5 text-xs font-bold text-amber-800 shadow-sm">
           Shiny 3D no disponible
+        </div>
+      )}
+
+      {slow && active && (
+        <div className="pointer-events-none absolute bottom-12 left-3 rounded-full bg-amber-100/95 px-3 py-1.5 text-xs font-bold text-amber-900 shadow-lg">
+          La carga está tardando. Puedes usar la vista Imagen.
         </div>
       )}
 

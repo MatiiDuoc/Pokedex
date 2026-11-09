@@ -23,6 +23,7 @@ interface PokemonCardProps {
 export default function PokemonCard({ pokemon, shiny = false }: PokemonCardProps) {
   const [showModal, setShowModal] = useState(false);
   const [justAdded, setJustAdded] = useState(false);
+  const [preloadStarted, setPreloadStarted] = useState(false);
   const { add, has, isFull, requiresLogin, hydrated } = useTeam();
   const router = useRouter();
   const pathname = usePathname();
@@ -45,6 +46,14 @@ export default function PokemonCard({ pokemon, shiny = false }: PokemonCardProps
     const timeout = window.setTimeout(() => setJustAdded(false), 1500);
     return () => window.clearTimeout(timeout);
   }, [justAdded]);
+
+  const preloadModel = () => {
+    if (preloadStarted) return;
+    setPreloadStarted(true);
+    void import('./Pokemon3DViewer').then((module) =>
+      module.preloadPokemonModel(pokemon.id)
+    );
+  };
 
   const handleAddToTeam = () => {
     if (requiresLogin) {
@@ -131,6 +140,8 @@ export default function PokemonCard({ pokemon, shiny = false }: PokemonCardProps
               <Link
                 href={`/pokedex/${pokemon.id}`}
                 aria-label={`Abrir ficha de ${formatPokemonName(pokemon.name)}`}
+                onMouseEnter={preloadModel}
+                onFocus={preloadModel}
                 className="relative block"
               >
                 {/* eslint-disable-next-line @next/next/no-img-element */}
@@ -202,6 +213,8 @@ export default function PokemonCard({ pokemon, shiny = false }: PokemonCardProps
             <button
               type="button"
               onClick={() => setShowModal(true)}
+              onMouseEnter={preloadModel}
+              onFocus={preloadModel}
               className="inline-flex flex-1 items-center justify-center gap-2 rounded-lg bg-gradient-to-r from-blue-500 to-blue-600 px-4 py-3 text-sm font-bold text-white shadow-md transition-all hover:from-blue-600 hover:to-blue-700 hover:shadow-lg focus:outline-none focus-visible:ring-2 focus-visible:ring-blue-300"
             >
               <Gamepad2 className="h-4 w-4" /> Ver ficha

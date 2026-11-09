@@ -17,13 +17,16 @@ checklists por juego, guías paso a paso y visor 3D.
   debilidades/resistencias, visor 3D, captura y SEO propio.
 - **Team Builder** (`/equipo`) con los 6 huecos del equipo, arrastrar y soltar
   para reordenar, cobertura ofensiva, debilidades compartidas y sugerencias
-  automáticas de Pokémon que cubren los huecos del equipo.
-- **Guías visuales** con mapa de ruta de la región, insignias y un Pokémon
-  representativo del tipo de cada gimnasio.
+  automáticas de Pokémon que cubren los huecos del equipo (pool ampliado a 65
+  especies).
+- **Guías visuales** con mapa esquemático de la región, pines de ruta,
+  insignias y un Pokémon representativo del tipo de cada gimnasio.
 - **Modo oscuro** con toggle claro/oscuro, persistencia en localStorage y
   respeto a la preferencia del sistema.
 - **Visor 3D** con modelos normales y shiny, selector de animaciones, pantalla
-  completa, rotación pausable, progreso de carga y fallback a imagen.
+  completa, rotación pausable, progreso de carga, precarga al pasar el ratón,
+  caché de modelos en el Service Worker, ajuste de calidad en móvil y fallback
+  a imagen.
 - **Legendarios y míticos** identificados con badges y filtros, incluyendo
   ultraentes y las especies de todas las generaciones.
 - **Navegación móvil** con barra inferior, iconos Lucide, skeletons de carga,
@@ -177,6 +180,18 @@ Para añadir una guía:
 3. Si es un juego principal, añade su `version-group` en
    `data/versionGroups.ts`.
 4. Ejecuta `npm run typecheck`, `npm test` y `npm run build`.
+
+## Modelos 3D
+
+- Los modelos se cargan desde Pokémon-3D-api y usan compresión Draco.
+- La CSP incluye `'wasm-unsafe-eval'` para permitir el decoder WebAssembly de
+  Draco. Sin esa directiva el modelo se queda atascado en la carga.
+- El Service Worker cachea los `.glb` en `pokedex-v3-models`: la primera carga
+  va a la red y las siguientes salen de caché.
+- Las tarjetas precargan el modelo al pasar el ratón o enfocar “Ver ficha”.
+- En móvil se reduce el DPR y se desactivan sombras para mejorar el rendimiento.
+- Si un modelo no está disponible o tarda demasiado, se puede usar la vista
+  Imagen desde el propio visor.
 
 ## PWA offline
 

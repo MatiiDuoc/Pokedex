@@ -1,6 +1,7 @@
-const VERSION = 'pokedex-v2';
+const VERSION = 'pokedex-v3';
 const STATIC_CACHE = `${VERSION}-static`;
 const PAGES_CACHE = `${VERSION}-pages`;
+const MODELS_CACHE = `${VERSION}-models`;
 
 const PRECACHE = [
   '/',
@@ -46,6 +47,27 @@ self.addEventListener('fetch', (event) => {
   if (request.method !== 'GET') return;
 
   const url = new URL(request.url);
+
+  // Modelos 3D: cache-first para que la segunda carga sea instantánea.
+  if (
+    url.origin === 'https://raw.githubusercontent.com' &&
+    url.pathname.startsWith('/Pokemon-3D-api/assets/')
+  ) {
+    event.respondWith(
+      caches.open(MODELS_CACHE).then(async (cache) => {
+        const cached = await cache.match(request);
+        if (cached) return cached;
+
+        const response = await fetch(request);
+        if (response.ok) {
+          void cache.put(request, response.clone());
+        }
+        return response;
+      })
+    );
+    return;
+  }
+
   if (url.origin !== self.location.origin) return;
 
   // Nunca cachear API: login, progreso y cuenta deben ir siempre a la red.
