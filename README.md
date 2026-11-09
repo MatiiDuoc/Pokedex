@@ -6,6 +6,9 @@ checklists por juego, guías paso a paso y visor 3D.
 
 ## Características
 
+- **Inicio renovado** con hero, búsqueda global de Pokémon y guías,
+  “Continúa tu aventura”, Pokémon destacados, selector de juego, legendarios
+  destacados y resumen del equipo.
 - **Pokédex Nacional** con las 1025 especies, búsqueda por nombre/número,
   filtros por generación, tipo y categoría especial (legendario, mítico,
   ultraente) y **modo shiny** para ver la versión shiny de todos los Pokémon.
@@ -100,6 +103,8 @@ Tablas creadas: `users`, `sessions`, `progress` y `rate_limits`.
 - `POST /api/auth/login` — inicia sesión.
 - `POST /api/auth/logout` — cierra la sesión.
 - `GET /api/auth/me` — devuelve el usuario actual.
+- `GET /api/search?q=...` — búsqueda global de Pokémon y guías para el
+  autocompletado del inicio.
 - `GET /api/account` — devuelve todas las guías y el equipo del usuario.
 - `PUT /api/account` — guarda `{ slug, data }` (o `__team__` para el equipo).
 - `DELETE /api/account` — borra todo el progreso del usuario.

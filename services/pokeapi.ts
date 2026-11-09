@@ -117,6 +117,32 @@ async function getPokemonDetail(resource: PokeApiNamedResource): Promise<Pokemon
   }
 }
 
+/** Obtiene detalles de una lista concreta de IDs nacionales. */
+export async function getPokemonByIds(ids: number[]): Promise<PokemonBasic[]> {
+  const uniqueIds = Array.from(
+    new Set(ids.filter((id) => Number.isInteger(id) && id >= 1 && id <= MAX_POKEMON))
+  );
+
+  const results = await Promise.all(
+    uniqueIds.map((id) =>
+      getPokemonDetail({
+        name: String(id),
+        url: `${POKEAPI_BASE}/pokemon/${id}`,
+      })
+    )
+  );
+
+  const byId = new Map(
+    results
+      .filter((pokemon): pokemon is PokemonBasic => pokemon !== null)
+      .map((pokemon) => [pokemon.id, pokemon])
+  );
+
+  return uniqueIds
+    .map((id) => byId.get(id))
+    .filter((pokemon): pokemon is PokemonBasic => pokemon !== undefined);
+}
+
 /** Obtiene Pokémon con paginación y detalles básicos. */
 export async function getPokemonPaginated(
   offset = 0,

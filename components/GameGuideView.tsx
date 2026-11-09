@@ -1,7 +1,7 @@
 'use client';
 
 import Link from 'next/link';
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import PokedexChecklist from './PokedexChecklist';
 import { useAccount } from '@/components/AccountProvider';
 import { useGameProgress } from '@/lib/progress';
@@ -38,6 +38,30 @@ export default function GameGuideView({
   const hasPokedex = (game.pokedexMode ?? 'regional') !== 'none';
   const loginHref = `/login?next=${encodeURIComponent(`/guias/${game.slug}`)}`;
   const progressReadOnly = requiresLogin || !loaded;
+
+  useEffect(() => {
+    try {
+      window.localStorage.setItem(
+        'pokedex:last-guide',
+        JSON.stringify({
+          slug: game.slug,
+          title: game.title,
+          region: game.region,
+          accent: game.accent,
+          checklistTotal: game.completionChecklist.length,
+          updatedAt: Date.now(),
+        })
+      );
+    } catch {
+      // localStorage puede estar bloqueado.
+    }
+  }, [
+    game.slug,
+    game.title,
+    game.region,
+    game.accent,
+    game.completionChecklist.length,
+  ]);
 
   const checklistDone = game.completionChecklist.filter((item) =>
     progress.checklist.includes(item)

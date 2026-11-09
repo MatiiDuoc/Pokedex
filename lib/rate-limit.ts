@@ -84,7 +84,7 @@ export async function checkRateLimit(
 
 export const RATE_LIMITS = {
   login: { limit: 10, windowSeconds: 60 },
-  register: { limit: 5, windowSeconds: 3600 },
+  register: { limit: 20, windowSeconds: 3600 },
   accountWrite: { limit: 120, windowSeconds: 60 },
   accountRead: { limit: 240, windowSeconds: 60 },
   reset: { limit: 5, windowSeconds: 3600 },
