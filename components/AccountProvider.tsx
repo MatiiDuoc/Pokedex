@@ -54,6 +54,7 @@ interface TeamContextValue {
   has: (id: number) => boolean;
   add: (pokemon: PokemonBasic) => 'added' | 'duplicate' | 'full' | 'auth' | 'loading';
   remove: (id: number) => void;
+  move: (from: number, to: number) => void;
   clear: () => void;
 }
 
@@ -524,6 +525,20 @@ export function useTeam(): TeamContextValue {
     [user, team, saveTeam]
   );
 
+  const move = useCallback(
+    (from: number, to: number) => {
+      if (!user) return;
+      if (from === to) return;
+      if (from < 0 || to < 0 || from >= team.length || to >= team.length) return;
+
+      const next = [...team];
+      const [moved] = next.splice(from, 1);
+      next.splice(to, 0, moved);
+      saveTeam(next);
+    },
+    [user, team, saveTeam]
+  );
+
   const clear = useCallback(() => {
     if (!user) return;
     saveTeam([]);
@@ -538,6 +553,7 @@ export function useTeam(): TeamContextValue {
     has,
     add,
     remove,
+    move,
     clear,
   };
 }

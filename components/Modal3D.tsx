@@ -3,7 +3,14 @@
 import dynamic from 'next/dynamic';
 import Link from 'next/link';
 import { useEffect, useState } from 'react';
-import { Maximize2, Minimize2, Pause, Play, RotateCw } from 'lucide-react';
+import {
+  Maximize2,
+  Minimize2,
+  Pause,
+  Play,
+  RotateCw,
+  Sparkles,
+} from 'lucide-react';
 import { TYPE_GRADIENTS, formatPokemonName } from '@/lib/pokemon';
 
 const Pokemon3DViewer = dynamic(() => import('./Pokemon3DViewer'), {
@@ -34,6 +41,7 @@ export default function Modal3D({ pokemon, onClose }: Modal3DProps) {
   const [scale, setScale] = useState(1);
   const [isFullscreen, setIsFullscreen] = useState(false);
   const [autoRotate, setAutoRotate] = useState(true);
+  const [modelShiny, setModelShiny] = useState(false);
 
   const gradient =
     TYPE_GRADIENTS[pokemon.types?.[0] ?? 'normal'] ??
@@ -100,6 +108,21 @@ export default function Modal3D({ pokemon, onClose }: Modal3DProps) {
                   Imagen
                 </button>
               </div>
+              {viewMode === '3d' && (
+                <button
+                  type="button"
+                  onClick={() => setModelShiny((value) => !value)}
+                  aria-pressed={modelShiny}
+                  className={`rounded-md px-2.5 py-1.5 text-xs font-bold transition ${
+                    modelShiny
+                      ? 'bg-gradient-to-r from-yellow-300 to-amber-400 text-amber-950'
+                      : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
+                  }`}
+                >
+                  <Sparkles className="mr-1 inline h-3.5 w-3.5" />
+                  Shiny 3D
+                </button>
+              )}
               <button
                 type="button"
                 onClick={() => setIsFullscreen((value) => !value)}
@@ -139,6 +162,7 @@ export default function Modal3D({ pokemon, onClose }: Modal3DProps) {
                   name={formatPokemonName(pokemon.name)}
                   spriteUrl={pokemon.spriteUrl}
                   autoRotate={autoRotate}
+                  shiny={modelShiny}
                 />
               ) : (
                 <div className="flex h-full flex-col items-center justify-center">

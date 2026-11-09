@@ -1,7 +1,17 @@
 'use client';
 
 import Link from 'next/link';
-import { Plus, ShieldAlert, Sparkles, Swords, Trash2, Users } from 'lucide-react';
+import { useState } from 'react';
+import {
+  Check,
+  GripVertical,
+  Plus,
+  ShieldAlert,
+  Sparkles,
+  Swords,
+  Trash2,
+  Users,
+} from 'lucide-react';
 import { useAccount } from '@/components/AccountProvider';
 import { useTeam } from '@/components/TeamProvider';
 import {
@@ -9,15 +19,22 @@ import {
   formatPokemonName,
   getTypeLabel,
 } from '@/lib/pokemon';
+import { getTeamSuggestions } from '@/lib/team-suggestions';
 import {
   getOffensiveCoverage,
   getTeamWeaknesses,
   getTypeName,
 } from '@/lib/type-chart';
+import type { PokemonBasic } from '@/types/pokemon';
 
-export default function TeamBuilder() {
+interface TeamBuilderProps {
+  suggestions: PokemonBasic[];
+}
+
+export default function TeamBuilder({ suggestions }: TeamBuilderProps) {
   const { authLoading, user } = useAccount();
-  const { team, maxSize, hydrated, remove } = useTeam();
+  const { team, maxSize, hydrated, remove, move, add, has, isFull } = useTeam();
+  const [draggedIndex, setDraggedIndex] = useState<number | null>(null);
 
   if (authLoading) {
     return (
@@ -59,6 +76,12 @@ export default function TeamBuilder() {
 
   const weaknesses = getTeamWeaknesses(team.map((pokemon) => pokemon.types));
   const coverage = getOffensiveCoverage(team.map((pokemon) => pokemon.types));
+  const recommended = getTeamSuggestions(
+    team.map((pokemon) => pokemon.types),
+    suggestions,
+    team.map((pokemon) => pokemon.id),
+    6
+  );
 
   return (
     <div className="mx-auto max-w-5xl px-4 py-10">
@@ -119,8 +142,19 @@ export default function TeamBuilder() {
             return (
               <article
                 key={pokemon.id}
-                className="animate-pop-in relative rounded-2xl border border-gray-200 bg-white p-4 text-center shadow-sm"
+                draggable
+                onDragStart={() => setDraggedIndex(index)}
+                onDragOver={(event) => event.preventDefault()}
+                onDrop={() => {
+                  if (draggedIndex !== null) move(draggedIndex, index);
+                  setDraggedIndex(null);
+                }}
+                onDragEnd={() => setDraggedIndex(null)}
+                className={`animate-pop-in relative cursor-grab rounded-2xl border border-gray-200 bg-white p-4 text-center shadow-sm transition active:cursor-grabbing ${
+                  draggedIndex === index ? 'opacity-50' : ''
+                }`}
               >
+                <GripVertical className="absolute left-2 top-2 h-4 w-4 text-gray-300" />
                 <button
                   type="button"
                   onClick={() => remove(pokemon.id)}
@@ -218,6 +252,83 @@ export default function TeamBuilder() {
           )}
         </section>
       </div>
+
+      <section className="mt-4 rounded-2xl border border-gray-200 bg-white p-5 shadow-sm">
+        <h2 className="flex items-center gap-2 text-lg font-black text-gray-900">
+          <Sparkles className="h-5 w-5 text-purple-600" /> Sugerencias para cubrir
+          debilidades
+        </h2>
+        <p className="mt-1 text-sm text-gray-600">
+          Pokémon del pool que resisten o son inmunes a los tipos que más dañan a
+          tu equipo.
+        </p>
+
+        {recommended.length === 0 ? (
+          <p className="mt-3 rounded-xl bg-gray-50 p-4 text-sm text-gray-500">
+            Tu equipo está equilibrado o no hay sugerencias disponibles.
+          </p>
+        ) : (
+          <div className="mt-4 grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
+            {recommended.map((candidate) => {
+              const alreadyInTeam = has(candidate.id);
+              const disabled = alreadyInTeam || isFull;
+              return (
+                <div
+                  key={candidate.id}
+                  className="flex items-center gap-3 rounded-xl border border-gray-200 bg-gray-50 p-3"
+                >
+                  <Link href={`/pokedex/${candidate.id}`} className="flex-none">
+                    {/* eslint-disable-next-line @next/next/no-img-element */}
+                    <img
+                      src={candidate.spriteUrl}
+                      alt={formatPokemonName(candidate.name)}
+                      loading="lazy"
+                      className="h-14 w-14 object-contain"
+                    />
+                  </Link>
+                  <div className="min-w-0 flex-1">
+                    <Link
+                      href={`/pokedex/${candidate.id}`}
+                      className="block truncate text-sm font-bold text-gray-900 hover:text-red-600"
+                    >
+                      {formatPokemonName(candidate.name)}
+                    </Link>
+                    <div className="mt-1 flex flex-wrap gap-1">
+                      {candidate.types.map((type) => (
+                        <span
+                          key={type}
+                          className={`rounded-full px-1.5 py-0.5 text-[9px] font-bold uppercase text-white ${
+                            TYPE_COLORS[type] ?? 'bg-gray-400'
+                          }`}
+                        >
+                          {getTypeLabel(type)}
+                        </span>
+                      ))}
+                    </div>
+                    <p className="mt-1 text-[10px] font-semibold text-purple-700">
+                      Cubre {candidate.score} debilidad
+                      {candidate.score === 1 ? '' : 'es'}
+                    </p>
+                  </div>
+                  <button
+                    type="button"
+                    onClick={() => add(candidate)}
+                    disabled={disabled}
+                    aria-label={`Añadir a ${formatPokemonName(candidate.name)}`}
+                    className="flex h-9 w-9 flex-none items-center justify-center rounded-full bg-red-600 text-white transition hover:bg-red-700 disabled:cursor-not-allowed disabled:bg-gray-300"
+                  >
+                    {alreadyInTeam ? (
+                      <Check className="h-4 w-4" />
+                    ) : (
+                      <Plus className="h-4 w-4" />
+                    )}
+                  </button>
+                </div>
+              );
+            })}
+          </div>
+        )}
+      </section>
 
       <section className="mt-4 rounded-2xl border border-blue-200 bg-blue-50 p-5">
         <h2 className="flex items-center gap-2 text-sm font-black text-blue-900">

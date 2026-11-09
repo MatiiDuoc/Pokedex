@@ -15,8 +15,15 @@ checklists por juego, guías paso a paso y visor 3D.
 - **Página de detalle por Pokémon** (`/pokedex/[id]`) con artwork shiny,
   estadísticas, habilidades, entrada de la Pokédex, cadena de evolución,
   debilidades/resistencias, visor 3D, captura y SEO propio.
-- **Team Builder** (`/equipo`) con los 6 huecos del equipo, cobertura ofensiva,
-  debilidades compartidas y análisis de tipos.
+- **Team Builder** (`/equipo`) con los 6 huecos del equipo, arrastrar y soltar
+  para reordenar, cobertura ofensiva, debilidades compartidas y sugerencias
+  automáticas de Pokémon que cubren los huecos del equipo.
+- **Guías visuales** con mapa de ruta de la región, insignias y un Pokémon
+  representativo del tipo de cada gimnasio.
+- **Modo oscuro** con toggle claro/oscuro, persistencia en localStorage y
+  respeto a la preferencia del sistema.
+- **Visor 3D** con modelos normales y shiny, selector de animaciones, pantalla
+  completa, rotación pausable, progreso de carga y fallback a imagen.
 - **Legendarios y míticos** identificados con badges y filtros, incluyendo
   ultraentes y las especies de todas las generaciones.
 - **Navegación móvil** con barra inferior, iconos Lucide, skeletons de carga,

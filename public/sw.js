@@ -1,4 +1,4 @@
-const VERSION = 'pokedex-v1';
+const VERSION = 'pokedex-v2';
 const STATIC_CACHE = `${VERSION}-static`;
 const PAGES_CACHE = `${VERSION}-pages`;
 
@@ -53,7 +53,7 @@ self.addEventListener('fetch', (event) => {
 
   if (request.mode === 'navigate') {
     event.respondWith(
-      fetch(request)
+      fetch(request, { cache: 'no-store' })
         .then((response) => {
           void cachePage(request, response);
           return response;

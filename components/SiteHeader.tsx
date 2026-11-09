@@ -3,6 +3,7 @@
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 import { useAccount } from '@/components/AccountProvider';
+import ThemeToggle from '@/components/ThemeToggle';
 
 const links = [
   { href: '/', label: 'Inicio' },
@@ -41,7 +42,7 @@ export default function SiteHeader() {
 
           <nav
             aria-label="Navegación principal"
-            className="hidden items-center gap-1 overflow-x-auto md:flex"
+            className="hidden items-center gap-1 overflow-x-auto lg:flex"
           >
             {links.map((link) => {
               const isActive =
@@ -67,6 +68,7 @@ export default function SiteHeader() {
           </nav>
 
           <div className="flex flex-none items-center gap-2">
+            <ThemeToggle />
             {syncError && (
               <span
                 title={syncError}

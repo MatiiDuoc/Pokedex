@@ -2,8 +2,11 @@
 
 import Link from 'next/link';
 import { useEffect, useState } from 'react';
+import { Award } from 'lucide-react';
 import PokedexChecklist from './PokedexChecklist';
+import RegionRouteMap from './RegionRouteMap';
 import { useAccount } from '@/components/AccountProvider';
+import { getGymTypeVisual } from '@/lib/gym-visuals';
 import { useGameProgress } from '@/lib/progress';
 import { getTypeColorByLabel } from '@/lib/pokemon';
 import type { GameGuide } from '@/types/game';
@@ -469,6 +472,11 @@ export default function GameGuideView({
               aria-labelledby="tab-desafios"
               className="space-y-5"
             >
+              <RegionRouteMap
+                locations={game.gyms.map((challenge) => challenge.location)}
+                accent={game.accent}
+              />
+
               <div className="rounded-2xl bg-white p-5 shadow-sm">
                 <h2 className="text-xl font-black text-gray-900">
                   {game.challengeLabel}
@@ -479,13 +487,25 @@ export default function GameGuideView({
               </div>
 
               <div className="grid gap-4 md:grid-cols-2">
-                {game.gyms.map((challenge, index) => (
+                {game.gyms.map((challenge, index) => {
+                  const visual = getGymTypeVisual(challenge.type);
+
+                  return (
                   <article
                     key={`${challenge.leader}-${index}`}
                     className="rounded-2xl bg-white p-5 shadow-sm"
                   >
                     <div className="flex items-start justify-between gap-3">
                       <div className="flex items-center gap-3">
+                        {visual && (
+                          // eslint-disable-next-line @next/next/no-img-element
+                          <img
+                            src={visual.artworkUrl}
+                            alt={visual.name}
+                            loading="lazy"
+                            className="h-12 w-12 flex-none object-contain"
+                          />
+                        )}
                         <span className="flex h-9 w-9 flex-none items-center justify-center rounded-full bg-gray-900 text-sm font-black text-white">
                           {index + 1}
                         </span>
@@ -498,7 +518,8 @@ export default function GameGuideView({
                           </p>
                         </div>
                       </div>
-                      <span className="rounded-full bg-gray-100 px-2.5 py-1 text-xs font-bold text-gray-700">
+                      <span className="inline-flex items-center gap-1 rounded-full bg-gray-100 px-2.5 py-1 text-xs font-bold text-gray-700">
+                        <Award className="h-3 w-3" />
                         {challenge.badge}
                       </span>
                     </div>
@@ -515,7 +536,8 @@ export default function GameGuideView({
 
                     <p className="mt-3 text-sm text-gray-600">{challenge.tip}</p>
                   </article>
-                ))}
+                  );
+                })}
               </div>
 
               {game.eliteFour.length > 0 && (

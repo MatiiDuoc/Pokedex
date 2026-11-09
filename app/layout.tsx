@@ -57,12 +57,17 @@ export default function RootLayout({
   children: React.ReactNode;
 }>) {
   return (
-    <html lang="es">
+    <html lang="es" suppressHydrationWarning>
       <body className={`${geistSans.variable} ${geistMono.variable} antialiased`}>
+        <script
+          dangerouslySetInnerHTML={{
+            __html: `(function(){try{var t=localStorage.getItem('pokedex:theme');var d=t?t==='dark':window.matchMedia('(prefers-color-scheme: dark)').matches;document.documentElement.classList.toggle('dark',d);document.documentElement.style.colorScheme=d?'dark':'light';}catch(e){}})();`,
+          }}
+        />
         <AccountProvider>
           <SiteHeader />
-          <main className="pb-20 md:pb-0">{children}</main>
-          <footer className="border-t border-gray-200 bg-white px-4 pb-24 pt-8 text-center text-sm text-gray-500 md:pb-8">
+          <main className="pb-20 lg:pb-0">{children}</main>
+          <footer className="border-t border-gray-200 bg-white px-4 pb-24 pt-8 text-center text-sm text-gray-500 lg:pb-8">
             <p>
               Proyecto fan sin afiliación con Nintendo, Game Freak o The Pokémon
               Company.
