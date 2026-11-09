@@ -2,6 +2,7 @@
 
 import { useEffect } from 'react';
 import Link from 'next/link';
+import { AlertTriangle } from 'lucide-react';
 
 export default function ErrorPage({
   error,
@@ -17,9 +18,7 @@ export default function ErrorPage({
   return (
     <div className="flex min-h-[70vh] items-center justify-center px-4 py-16">
       <div className="max-w-lg text-center">
-        <p className="text-5xl" aria-hidden="true">
-          ⚠️
-        </p>
+        <AlertTriangle className="mx-auto h-12 w-12 text-amber-500" />
         <h1 className="mt-3 text-3xl font-black text-gray-900">
           Algo ha salido mal
         </h1>

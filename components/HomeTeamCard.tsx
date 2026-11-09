@@ -30,10 +30,10 @@ export default function HomeTeamCard() {
             </h2>
           </div>
           <Link
-            href="/cuenta"
+            href="/equipo"
             className="rounded-lg bg-gray-100 px-4 py-2 text-sm font-bold text-gray-700 transition hover:bg-gray-200"
           >
-            Gestionar cuenta
+            Abrir Team Builder
           </Link>
         </div>
 

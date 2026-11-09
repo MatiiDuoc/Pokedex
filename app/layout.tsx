@@ -2,6 +2,7 @@ import type { Metadata } from 'next';
 import { Geist, Geist_Mono } from 'next/font/google';
 import './globals.css';
 import SiteHeader from '@/components/SiteHeader';
+import MobileNav from '@/components/MobileNav';
 import PokemonTeam from '@/components/PokemonTeam';
 import { AccountProvider } from '@/components/AccountProvider';
 import ServiceWorkerRegistration from '@/components/ServiceWorkerRegistration';
@@ -60,8 +61,8 @@ export default function RootLayout({
       <body className={`${geistSans.variable} ${geistMono.variable} antialiased`}>
         <AccountProvider>
           <SiteHeader />
-          <main>{children}</main>
-          <footer className="border-t border-gray-200 bg-white px-4 py-8 text-center text-sm text-gray-500">
+          <main className="pb-20 md:pb-0">{children}</main>
+          <footer className="border-t border-gray-200 bg-white px-4 pb-24 pt-8 text-center text-sm text-gray-500 md:pb-8">
             <p>
               Proyecto fan sin afiliación con Nintendo, Game Freak o The Pokémon
               Company.
@@ -72,6 +73,7 @@ export default function RootLayout({
             </p>
           </footer>
           <PokemonTeam />
+          <MobileNav />
           <ServiceWorkerRegistration />
           <Analytics />
           <SpeedInsights />

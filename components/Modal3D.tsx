@@ -1,8 +1,10 @@
 'use client';
 
 import dynamic from 'next/dynamic';
+import Link from 'next/link';
 import { useEffect, useState } from 'react';
-import { formatPokemonName } from '@/lib/pokemon';
+import { Maximize2, Minimize2, Pause, Play, RotateCw } from 'lucide-react';
+import { TYPE_GRADIENTS, formatPokemonName } from '@/lib/pokemon';
 
 const Pokemon3DViewer = dynamic(() => import('./Pokemon3DViewer'), {
   ssr: false,
@@ -19,6 +21,7 @@ interface Modal3DProps {
     id: number;
     spriteUrl: string;
     model3dUrl?: string;
+    types?: string[];
   };
   onClose: () => void;
 }
@@ -29,6 +32,12 @@ export default function Modal3D({ pokemon, onClose }: Modal3DProps) {
   const [viewerKey, setViewerKey] = useState(0);
   const [rotation, setRotation] = useState(0);
   const [scale, setScale] = useState(1);
+  const [isFullscreen, setIsFullscreen] = useState(false);
+  const [autoRotate, setAutoRotate] = useState(true);
+
+  const gradient =
+    TYPE_GRADIENTS[pokemon.types?.[0] ?? 'normal'] ??
+    'from-indigo-200 to-purple-200';
 
   useEffect(() => {
     const handleKeyDown = (event: KeyboardEvent) => {
@@ -60,7 +69,9 @@ export default function Modal3D({ pokemon, onClose }: Modal3DProps) {
           role="dialog"
           aria-modal="true"
           aria-labelledby="pokemon-modal-title"
-          className="relative w-full max-w-3xl rounded-2xl bg-white shadow-2xl"
+          className={`relative w-full rounded-2xl bg-white shadow-2xl transition-all ${
+            isFullscreen ? 'max-w-[96vw]' : 'max-w-3xl'
+          }`}
         >
           <div className="flex items-center justify-between border-b border-gray-200 px-6 py-4">
             <h2 id="pokemon-modal-title" className="text-2xl font-bold text-gray-900">
@@ -91,6 +102,18 @@ export default function Modal3D({ pokemon, onClose }: Modal3DProps) {
               </div>
               <button
                 type="button"
+                onClick={() => setIsFullscreen((value) => !value)}
+                aria-label={isFullscreen ? 'Salir de pantalla completa' : 'Pantalla completa'}
+                className="rounded-md p-1 text-gray-500 transition-colors hover:text-gray-700 focus:outline-none focus-visible:ring-2 focus-visible:ring-gray-300"
+              >
+                {isFullscreen ? (
+                  <Minimize2 className="h-5 w-5" />
+                ) : (
+                  <Maximize2 className="h-5 w-5" />
+                )}
+              </button>
+              <button
+                type="button"
                 onClick={onClose}
                 aria-label="Cerrar"
                 className="rounded-md p-1 text-gray-500 transition-colors hover:text-gray-700 focus:outline-none focus-visible:ring-2 focus-visible:ring-gray-300"
@@ -103,13 +126,19 @@ export default function Modal3D({ pokemon, onClose }: Modal3DProps) {
           </div>
 
           <div className="p-6">
-            <div className="relative h-96 overflow-hidden rounded-xl bg-gradient-to-br from-blue-100 via-purple-100 to-pink-100">
+            <div
+              className={`relative overflow-hidden rounded-xl bg-gradient-to-br ${gradient} transition-all ${
+                isFullscreen ? 'h-[70vh]' : 'h-96'
+              }`}
+            >
+              <div className="pointer-events-none absolute inset-0 bg-white/55" />
               {viewMode === '3d' ? (
                 <Pokemon3DViewer
                   key={viewerKey}
                   pokemonId={pokemon.id}
                   name={formatPokemonName(pokemon.name)}
                   spriteUrl={pokemon.spriteUrl}
+                  autoRotate={autoRotate}
                 />
               ) : (
                 <div className="flex h-full flex-col items-center justify-center">
@@ -146,14 +175,34 @@ export default function Modal3D({ pokemon, onClose }: Modal3DProps) {
             </p>
 
             <div className="mt-4 flex flex-col gap-3 sm:flex-row">
+              <Link
+                href={`/pokedex/${pokemon.id}`}
+                className="flex-1 rounded-lg bg-gray-100 px-4 py-3 text-center font-semibold text-gray-900 transition-colors hover:bg-gray-200 focus:outline-none focus-visible:ring-2 focus-visible:ring-gray-400"
+              >
+                Página completa
+              </Link>
               {viewMode === '3d' ? (
-                <button
-                  type="button"
-                  onClick={() => setViewerKey((value) => value + 1)}
-                  className="flex-1 rounded-lg bg-gray-100 px-4 py-3 font-semibold text-gray-900 transition-colors hover:bg-gray-200 focus:outline-none focus-visible:ring-2 focus-visible:ring-gray-400"
-                >
-                  Reiniciar vista
-                </button>
+                <>
+                  <button
+                    type="button"
+                    onClick={() => setViewerKey((value) => value + 1)}
+                    className="inline-flex flex-1 items-center justify-center gap-2 rounded-lg bg-gray-100 px-4 py-3 font-semibold text-gray-900 transition-colors hover:bg-gray-200 focus:outline-none focus-visible:ring-2 focus-visible:ring-gray-400"
+                  >
+                    <RotateCw className="h-4 w-4" /> Reiniciar
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setAutoRotate((value) => !value)}
+                    className="inline-flex flex-1 items-center justify-center gap-2 rounded-lg bg-gray-100 px-4 py-3 font-semibold text-gray-900 transition-colors hover:bg-gray-200 focus:outline-none focus-visible:ring-2 focus-visible:ring-gray-400"
+                  >
+                    {autoRotate ? (
+                      <Pause className="h-4 w-4" />
+                    ) : (
+                      <Play className="h-4 w-4" />
+                    )}
+                    {autoRotate ? 'Pausar' : 'Rotar'}
+                  </button>
+                </>
               ) : (
                 <>
                   <button

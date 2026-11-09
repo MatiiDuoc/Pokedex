@@ -1,5 +1,6 @@
 import type { Metadata } from 'next';
 import Link from 'next/link';
+import { WifiOff } from 'lucide-react';
 
 export const metadata: Metadata = {
   title: 'Sin conexión',
@@ -10,9 +11,7 @@ export default function OfflinePage() {
   return (
     <div className="flex min-h-[70vh] items-center justify-center px-4 py-16">
       <div className="max-w-lg text-center">
-        <p className="text-5xl" aria-hidden="true">
-          📡
-        </p>
+        <WifiOff className="mx-auto h-12 w-12 text-gray-400" />
         <h1 className="mt-3 text-3xl font-black text-gray-900">Sin conexión</h1>
         <p className="mt-2 text-gray-600">
           No podemos conectar con el servidor. Puedes seguir consultando las guías

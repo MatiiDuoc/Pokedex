@@ -2,6 +2,7 @@
 
 import Link from 'next/link';
 import { useState } from 'react';
+import { Lock } from 'lucide-react';
 import { useAccount } from '@/components/AccountProvider';
 
 export default function AccountDashboard() {
@@ -30,9 +31,7 @@ export default function AccountDashboard() {
     return (
       <div className="flex min-h-[60vh] items-center justify-center px-4 py-12">
         <div className="max-w-md rounded-2xl bg-white p-8 text-center shadow-xl">
-          <p className="text-4xl" aria-hidden="true">
-            🔐
-          </p>
+          <Lock className="mx-auto h-10 w-10 text-red-600" />
           <h1 className="mt-3 text-2xl font-black text-gray-900">
             Necesitas iniciar sesión
           </h1>

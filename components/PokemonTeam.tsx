@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from 'react';
 import Link from 'next/link';
+import { Lock } from 'lucide-react';
 import { useTeam } from '@/components/TeamProvider';
 import { useAccount } from '@/components/AccountProvider';
 import {
@@ -40,7 +41,7 @@ export default function PokemonTeam() {
         onClick={() => setIsOpen((value) => !value)}
         aria-label={`Abrir mi equipo (${team.length}/${maxSize})`}
         aria-expanded={isOpen}
-        className="fixed bottom-6 right-6 z-30 flex h-16 w-16 items-center justify-center rounded-full bg-gradient-to-r from-red-500 to-red-600 text-white shadow-2xl transition-all hover:scale-110 hover:from-red-600 hover:to-red-700 focus:outline-none focus-visible:ring-4 focus-visible:ring-red-300"
+        className="fixed bottom-24 right-4 z-30 flex h-14 w-14 items-center justify-center rounded-full bg-gradient-to-r from-red-500 to-red-600 text-white shadow-2xl transition-all hover:scale-110 hover:from-red-600 hover:to-red-700 focus:outline-none focus-visible:ring-4 focus-visible:ring-red-300 md:bottom-6 md:right-6 md:h-16 md:w-16"
       >
         <div className="relative">
           <svg className="h-8 w-8" fill="none" viewBox="0 0 24 24" stroke="currentColor" aria-hidden="true">
@@ -102,9 +103,7 @@ export default function PokemonTeam() {
               <div className="flex h-full items-center justify-center text-center">
                 <div>
                   <div className="mx-auto mb-4 flex h-24 w-24 items-center justify-center rounded-full bg-blue-50">
-                    <span className="text-4xl" aria-hidden="true">
-                      🔐
-                    </span>
+                    <Lock className="h-10 w-10 text-blue-600" />
                   </div>
                   <p className="text-lg font-semibold text-gray-900">
                     Inicia sesión para guardar tu equipo

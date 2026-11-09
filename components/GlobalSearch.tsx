@@ -2,6 +2,7 @@
 
 import Link from 'next/link';
 import { useDeferredValue, useMemo, useState } from 'react';
+import { Sparkles } from 'lucide-react';
 import {
   LEGENDARY_FILTERS,
   TYPE_LABELS,
@@ -245,13 +246,14 @@ export default function GlobalSearch({
                 type="button"
                 onClick={() => setShiny((value) => !value)}
                 aria-pressed={shiny}
-                className={`rounded-full px-4 py-2 text-sm font-bold transition ${
+                className={`inline-flex items-center gap-2 rounded-full px-4 py-2 text-sm font-bold transition ${
                   shiny
                     ? 'bg-gradient-to-r from-yellow-300 to-amber-400 text-amber-950 shadow-md'
                     : 'bg-white text-gray-700 shadow-sm hover:bg-gray-50'
                 }`}
               >
-                ✨ {shiny ? 'Modo shiny activo' : 'Ver shinies'}
+                <Sparkles className="h-4 w-4" />
+                {shiny ? 'Modo shiny activo' : 'Ver shinies'}
               </button>
               <Link
                 href="/pokedex"
@@ -267,9 +269,10 @@ export default function GlobalSearch({
               {filteredPokemon.map((entry) => {
                 const legendaryLabel = getLegendaryLabel(entry.legendaryCategory);
                 return (
-                  <article
+                  <Link
                     key={entry.id}
-                    className="rounded-xl bg-white p-3 text-center shadow-sm"
+                    href={`/pokedex/${entry.id}`}
+                    className="rounded-xl bg-white p-3 text-center shadow-sm transition hover:-translate-y-0.5 hover:shadow-md"
                   >
                     {/* eslint-disable-next-line @next/next/no-img-element */}
                     <img
@@ -305,7 +308,7 @@ export default function GlobalSearch({
                         {legendaryLabel}
                       </span>
                     )}
-                  </article>
+                  </Link>
                 );
               })}
             </div>

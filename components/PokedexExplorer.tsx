@@ -1,6 +1,8 @@
 'use client';
 
+import Link from 'next/link';
 import { useDeferredValue, useMemo, useState } from 'react';
+import { Sparkles } from 'lucide-react';
 import Pagination from './Pagination';
 import {
   LEGENDARY_FILTERS,
@@ -97,13 +99,9 @@ export default function PokedexExplorer({ pokemon }: PokedexExplorerProps) {
             {legendaryPokemon.map((entry) => {
               const label = getLegendaryLabel(entry.legendaryCategory);
               return (
-                <button
+                <Link
                   key={entry.id}
-                  type="button"
-                  onClick={() => {
-                    setQuery(entry.name);
-                    resetPage();
-                  }}
+                  href={`/pokedex/${entry.id}`}
                   className="w-24 flex-none rounded-xl border border-gray-100 bg-gray-50 p-2 text-center transition hover:border-amber-200 hover:bg-amber-50"
                 >
                   {/* eslint-disable-next-line @next/next/no-img-element */}
@@ -132,7 +130,7 @@ export default function PokedexExplorer({ pokemon }: PokedexExplorerProps) {
                   >
                     {label}
                   </span>
-                </button>
+                </Link>
               );
             })}
           </div>
@@ -229,13 +227,14 @@ export default function PokedexExplorer({ pokemon }: PokedexExplorerProps) {
             type="button"
             onClick={() => setShiny((value) => !value)}
             aria-pressed={shiny}
-            className={`rounded-full px-4 py-2 text-sm font-bold transition ${
+            className={`inline-flex items-center gap-2 rounded-full px-4 py-2 text-sm font-bold transition ${
               shiny
                 ? 'bg-gradient-to-r from-yellow-300 to-amber-400 text-amber-950 shadow-md'
                 : 'bg-white text-gray-700 shadow-sm hover:bg-gray-50'
             }`}
           >
-            ✨ {shiny ? 'Modo shiny activo' : 'Ver shinies'}
+            <Sparkles className="h-4 w-4" />
+            {shiny ? 'Modo shiny activo' : 'Ver shinies'}
           </button>
         </div>
 
@@ -243,9 +242,10 @@ export default function PokedexExplorer({ pokemon }: PokedexExplorerProps) {
           {visible.map((entry) => {
             const legendaryLabel = getLegendaryLabel(entry.legendaryCategory);
             return (
-              <article
+              <Link
                 key={entry.id}
-                className="rounded-xl bg-white p-3 text-center shadow-sm transition hover:-translate-y-0.5 hover:shadow-md"
+                href={`/pokedex/${entry.id}`}
+                className="animate-fade-up rounded-xl bg-white p-3 text-center shadow-sm transition hover:-translate-y-0.5 hover:shadow-md"
               >
                 {/* eslint-disable-next-line @next/next/no-img-element */}
                 <img
@@ -288,7 +288,7 @@ export default function PokedexExplorer({ pokemon }: PokedexExplorerProps) {
                     </span>
                   )}
                 </div>
-              </article>
+              </Link>
             );
           })}
         </section>

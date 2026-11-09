@@ -1,7 +1,9 @@
 'use client';
 
 import { useEffect, useState } from 'react';
+import Link from 'next/link';
 import { usePathname, useRouter } from 'next/navigation';
+import { Check, Gamepad2, LogIn, Sparkles, Zap } from 'lucide-react';
 import Modal3D from './Modal3D';
 import { useTeam } from '@/components/TeamProvider';
 import type { PokemonBasic } from '@/types/pokemon';
@@ -57,18 +59,24 @@ export default function PokemonCard({ pokemon, shiny = false }: PokemonCardProps
   const buttonLabel = !hydrated
     ? 'Cargando...'
     : requiresLogin
-      ? '🔐 Inicia sesión'
+      ? 'Inicia sesión'
       : justAdded
-        ? '✓ Agregado'
+        ? 'Agregado'
         : isInTeam
-          ? '✓ En equipo'
+          ? 'En equipo'
           : isFull
             ? 'Equipo lleno'
-            : '⚡ Capturar';
+            : 'Capturar';
+
+  const CaptureIcon = requiresLogin
+    ? LogIn
+    : justAdded || isInTeam
+      ? Check
+      : Zap;
 
   return (
     <>
-      <article className="group relative overflow-hidden rounded-2xl bg-white shadow-lg transition-all hover:-translate-y-1 hover:shadow-2xl">
+      <article className="group relative animate-pop-in overflow-hidden rounded-2xl bg-white shadow-lg transition-all hover:-translate-y-1 hover:shadow-2xl">
         <div
           className={`absolute inset-0 opacity-10 ${
             TYPE_COLORS[pokemon.types[0]] ?? 'bg-gray-400'
@@ -97,8 +105,8 @@ export default function PokemonCard({ pokemon, shiny = false }: PokemonCardProps
                   </span>
                 )}
                 {shiny && (
-                  <span className="rounded-full bg-gradient-to-r from-yellow-300 to-amber-400 px-2 py-0.5 text-xs font-bold text-amber-950 shadow-sm">
-                    ✨ Shiny
+                  <span className="inline-flex items-center gap-1 rounded-full bg-gradient-to-r from-yellow-300 to-amber-400 px-2 py-0.5 text-xs font-bold text-amber-950 shadow-sm">
+                    <Sparkles className="h-3 w-3 animate-sparkle" /> Shiny
                   </span>
                 )}
               </div>
@@ -120,18 +128,24 @@ export default function PokemonCard({ pokemon, shiny = false }: PokemonCardProps
           <div className="mb-4 flex justify-center">
             <div className="relative">
               <div className="absolute inset-0 rounded-full bg-gradient-to-br from-blue-100 to-purple-100 opacity-50 blur-2xl" />
-              {/* eslint-disable-next-line @next/next/no-img-element */}
-              <img
-                src={artwork}
-                alt={`${formatPokemonName(pokemon.name)}${shiny ? ' shiny' : ''}`}
-                loading="lazy"
-                onError={(event) => {
-                  const image = event.currentTarget;
-                  image.onerror = null;
-                  image.src = pokemon.spriteUrl;
-                }}
-                className="relative h-48 w-48 object-contain drop-shadow-2xl transition-transform group-hover:scale-110"
-              />
+              <Link
+                href={`/pokedex/${pokemon.id}`}
+                aria-label={`Abrir ficha de ${formatPokemonName(pokemon.name)}`}
+                className="relative block"
+              >
+                {/* eslint-disable-next-line @next/next/no-img-element */}
+                <img
+                  src={artwork}
+                  alt={`${formatPokemonName(pokemon.name)}${shiny ? ' shiny' : ''}`}
+                  loading="lazy"
+                  onError={(event) => {
+                    const image = event.currentTarget;
+                    image.onerror = null;
+                    image.src = pokemon.spriteUrl;
+                  }}
+                  className="relative h-48 w-48 object-contain drop-shadow-2xl transition-transform group-hover:scale-110"
+                />
+              </Link>
             </div>
           </div>
 
@@ -188,15 +202,15 @@ export default function PokemonCard({ pokemon, shiny = false }: PokemonCardProps
             <button
               type="button"
               onClick={() => setShowModal(true)}
-              className="flex-1 rounded-lg bg-gradient-to-r from-blue-500 to-blue-600 px-4 py-3 text-sm font-bold text-white shadow-md transition-all hover:from-blue-600 hover:to-blue-700 hover:shadow-lg focus:outline-none focus-visible:ring-2 focus-visible:ring-blue-300"
+              className="inline-flex flex-1 items-center justify-center gap-2 rounded-lg bg-gradient-to-r from-blue-500 to-blue-600 px-4 py-3 text-sm font-bold text-white shadow-md transition-all hover:from-blue-600 hover:to-blue-700 hover:shadow-lg focus:outline-none focus-visible:ring-2 focus-visible:ring-blue-300"
             >
-              🎮 Ver ficha
+              <Gamepad2 className="h-4 w-4" /> Ver ficha
             </button>
             <button
               type="button"
               onClick={handleAddToTeam}
               disabled={!hydrated || isInTeam || isFull}
-              className={`flex-1 rounded-lg px-4 py-3 text-sm font-bold text-white shadow-md transition-all hover:shadow-lg focus:outline-none focus-visible:ring-2 focus-visible:ring-red-300 disabled:cursor-not-allowed ${
+              className={`inline-flex flex-1 items-center justify-center gap-2 rounded-lg px-4 py-3 text-sm font-bold text-white shadow-md transition-all hover:shadow-lg focus:outline-none focus-visible:ring-2 focus-visible:ring-red-300 disabled:cursor-not-allowed ${
                 !hydrated
                   ? 'bg-gray-300'
                   : requiresLogin
@@ -208,6 +222,7 @@ export default function PokemonCard({ pokemon, shiny = false }: PokemonCardProps
                       : 'bg-gradient-to-r from-red-500 to-red-600 hover:from-red-600 hover:to-red-700'
               }`}
             >
+              <CaptureIcon className="h-4 w-4" />
               {buttonLabel}
             </button>
           </div>

@@ -12,8 +12,15 @@ checklists por juego, guías paso a paso y visor 3D.
 - **Pokédex Nacional** con las 1025 especies, búsqueda por nombre/número,
   filtros por generación, tipo y categoría especial (legendario, mítico,
   ultraente) y **modo shiny** para ver la versión shiny de todos los Pokémon.
+- **Página de detalle por Pokémon** (`/pokedex/[id]`) con artwork shiny,
+  estadísticas, habilidades, entrada de la Pokédex, cadena de evolución,
+  debilidades/resistencias, visor 3D, captura y SEO propio.
+- **Team Builder** (`/equipo`) con los 6 huecos del equipo, cobertura ofensiva,
+  debilidades compartidas y análisis de tipos.
 - **Legendarios y míticos** identificados con badges y filtros, incluyendo
   ultraentes y las especies de todas las generaciones.
+- **Navegación móvil** con barra inferior, iconos Lucide, skeletons de carga,
+  microinteracciones y respeto a `prefers-reduced-motion`.
 - **22 guías de juegos principales** desde la Generación I hasta la IX,
   incluyendo remakes y DLC.
 - **14 guías de spin-offs**: Mystery Dungeon, Ranger, Colosseum, XD, Snap,
@@ -105,6 +112,8 @@ Tablas creadas: `users`, `sessions`, `progress` y `rate_limits`.
 - `GET /api/auth/me` — devuelve el usuario actual.
 - `GET /api/search?q=...` — búsqueda global de Pokémon y guías para el
   autocompletado del inicio.
+- `/pokedex/[id]` — ficha completa de cada Pokémon (ISR de 7 días).
+- `/equipo` — Team Builder privado con análisis de tipos.
 - `GET /api/account` — devuelve todas las guías y el equipo del usuario.
 - `PUT /api/account` — guarda `{ slug, data }` (o `__team__` para el equipo).
 - `DELETE /api/account` — borra todo el progreso del usuario.

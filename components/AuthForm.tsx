@@ -3,6 +3,7 @@
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { useState } from 'react';
+import { CheckCircle2, Eye, EyeOff, Lock } from 'lucide-react';
 import { useAccount } from '@/components/AccountProvider';
 
 interface AuthFormProps {
@@ -61,8 +62,8 @@ export default function AuthForm({ mode, nextPath }: AuthFormProps) {
   if (user) {
     return (
       <div className="w-full max-w-md rounded-2xl bg-white p-8 text-center shadow-xl">
-        <div className="mx-auto flex h-14 w-14 items-center justify-center rounded-full bg-green-100 text-2xl">
-          ✓
+        <div className="mx-auto flex h-14 w-14 items-center justify-center rounded-full bg-green-100">
+          <CheckCircle2 className="h-7 w-7 text-green-600" />
         </div>
         <h1 className="mt-4 text-2xl font-black text-gray-900">
           Ya has iniciado sesión
@@ -92,8 +93,8 @@ export default function AuthForm({ mode, nextPath }: AuthFormProps) {
   if (isRegister && !registrationOpen) {
     return (
       <div className="w-full max-w-md rounded-2xl bg-white p-8 text-center shadow-xl">
-        <div className="mx-auto flex h-14 w-14 items-center justify-center rounded-full bg-amber-100 text-2xl">
-          🔒
+        <div className="mx-auto flex h-14 w-14 items-center justify-center rounded-full bg-amber-100">
+          <Lock className="h-7 w-7 text-amber-700" />
         </div>
         <h1 className="mt-4 text-2xl font-black text-gray-900">
           Registro cerrado
@@ -177,10 +178,14 @@ export default function AuthForm({ mode, nextPath }: AuthFormProps) {
             <button
               type="button"
               onClick={() => setShowPassword((value) => !value)}
-              className="rounded-lg bg-gray-100 px-3 text-xs font-bold text-gray-700 hover:bg-gray-200"
+              className="rounded-lg bg-gray-100 px-3 text-gray-700 transition hover:bg-gray-200"
               aria-label={showPassword ? 'Ocultar contraseña' : 'Mostrar contraseña'}
             >
-              {showPassword ? 'Ocultar' : 'Ver'}
+              {showPassword ? (
+                <EyeOff className="h-4 w-4" />
+              ) : (
+                <Eye className="h-4 w-4" />
+              )}
             </button>
           </div>
           <p className="mt-1 text-xs text-gray-500">Mínimo 8 caracteres.</p>

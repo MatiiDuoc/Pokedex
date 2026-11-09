@@ -8,6 +8,7 @@ const links = [
   { href: '/', label: 'Inicio' },
   { href: '/pokedex', label: 'Pokédex' },
   { href: '/guias', label: 'Guías' },
+  { href: '/equipo', label: 'Equipo' },
   { href: '/buscar', label: 'Buscar' },
   { href: '/cuenta', label: 'Cuenta' },
 ];
@@ -40,7 +41,7 @@ export default function SiteHeader() {
 
           <nav
             aria-label="Navegación principal"
-            className="flex items-center gap-1 overflow-x-auto"
+            className="hidden items-center gap-1 overflow-x-auto md:flex"
           >
             {links.map((link) => {
               const isActive =

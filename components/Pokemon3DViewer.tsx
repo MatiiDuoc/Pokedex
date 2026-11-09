@@ -8,7 +8,13 @@ import {
   type ReactNode,
 } from 'react';
 import { Canvas } from '@react-three/fiber';
-import { ContactShadows, Html, OrbitControls, useGLTF } from '@react-three/drei';
+import {
+  ContactShadows,
+  Html,
+  OrbitControls,
+  useGLTF,
+  useProgress,
+} from '@react-three/drei';
 import * as THREE from 'three';
 
 const MODEL_BASE =
@@ -18,6 +24,7 @@ interface ViewerProps {
   pokemonId: number;
   name: string;
   spriteUrl: string;
+  autoRotate?: boolean;
 }
 
 function Model({ pokemonId }: { pokemonId: number }) {
@@ -74,10 +81,12 @@ export default function Pokemon3DViewer({
   pokemonId,
   name,
   spriteUrl,
+  autoRotate = true,
 }: ViewerProps) {
   const [availability, setAvailability] = useState<'loading' | 'yes' | 'no'>(
     'loading'
   );
+  const { progress, active } = useProgress();
 
   useEffect(() => {
     let cancelled = false;
@@ -126,9 +135,9 @@ export default function Pokemon3DViewer({
         camera={{ position: [0, 0.2, 4.2], fov: 42 }}
         dpr={[1, 2]}
         shadows
+        gl={{ alpha: true, antialias: true }}
         className="h-full w-full"
       >
-        <color attach="background" args={['#eef2ff']} />
         <ambientLight intensity={1.1} />
         <directionalLight
           position={[3, 5, 4]}
@@ -159,10 +168,16 @@ export default function Pokemon3DViewer({
           enablePan={false}
           minDistance={2.2}
           maxDistance={7}
-          autoRotate
+          autoRotate={autoRotate}
           autoRotateSpeed={1.2}
         />
       </Canvas>
+
+      {active && (
+        <div className="pointer-events-none absolute bottom-3 right-3 rounded-full bg-slate-900/80 px-3 py-1.5 text-xs font-bold text-white shadow-lg">
+          Cargando modelo {Math.round(progress)}%
+        </div>
+      )}
     </ModelErrorBoundary>
   );
 }

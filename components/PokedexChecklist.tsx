@@ -1,6 +1,7 @@
 'use client';
 
 import { useDeferredValue, useMemo, useState } from 'react';
+import { Sparkles } from 'lucide-react';
 import Pagination from './Pagination';
 import {
   formatDexNumber,
@@ -155,13 +156,14 @@ export default function PokedexChecklist({
           type="button"
           onClick={() => setShiny((value) => !value)}
           aria-pressed={shiny}
-          className={`rounded-full px-4 py-2 text-sm font-bold transition ${
+          className={`inline-flex items-center gap-2 rounded-full px-4 py-2 text-sm font-bold transition ${
             shiny
               ? 'bg-gradient-to-r from-yellow-300 to-amber-400 text-amber-950 shadow-md'
               : 'bg-white text-gray-700 shadow-sm hover:bg-gray-50'
           }`}
         >
-          ✨ {shiny ? 'Modo shiny activo' : 'Ver shinies'}
+          <Sparkles className="h-4 w-4" />
+          {shiny ? 'Modo shiny activo' : 'Ver shinies'}
         </button>
       </div>
 
@@ -176,7 +178,7 @@ export default function PokedexChecklist({
               onClick={() => onToggle(entry.id)}
               aria-pressed={isCaught}
               disabled={readOnly}
-              className={`relative rounded-xl border p-2 text-center transition focus:outline-none focus-visible:ring-2 focus-visible:ring-red-300 disabled:cursor-not-allowed ${
+              className={`animate-fade-up relative rounded-xl border p-2 text-center transition focus:outline-none focus-visible:ring-2 focus-visible:ring-red-300 disabled:cursor-not-allowed ${
                 isCaught
                   ? 'border-green-300 bg-green-50 shadow-sm'
                   : 'border-gray-200 bg-white hover:border-red-200 hover:shadow-sm'

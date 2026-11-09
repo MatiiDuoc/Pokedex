@@ -112,7 +112,7 @@ export default function HomeSearch() {
       router.push(`/guias/${item.value.slug}`);
       return;
     }
-    router.push(`/buscar?q=${encodeURIComponent(item.value.name)}`);
+    router.push(`/pokedex/${item.value.id}`);
   };
 
   const handleKeyDown = (event: React.KeyboardEvent<HTMLInputElement>) => {

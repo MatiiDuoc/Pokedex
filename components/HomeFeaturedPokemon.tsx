@@ -2,6 +2,7 @@
 
 import Link from 'next/link';
 import { useState } from 'react';
+import { Sparkles } from 'lucide-react';
 import PokemonCard from '@/components/PokemonCard';
 import type { PokemonBasic } from '@/types/pokemon';
 
@@ -34,13 +35,14 @@ export default function HomeFeaturedPokemon({
             type="button"
             onClick={() => setShiny((value) => !value)}
             aria-pressed={shiny}
-            className={`rounded-full px-4 py-2 text-sm font-bold transition ${
+            className={`inline-flex items-center gap-2 rounded-full px-4 py-2 text-sm font-bold transition ${
               shiny
                 ? 'bg-gradient-to-r from-yellow-300 to-amber-400 text-amber-950 shadow-md'
                 : 'bg-white text-gray-700 shadow-sm hover:bg-gray-50'
             }`}
           >
-            ✨ {shiny ? 'Shiny activo' : 'Ver shinies'}
+            <Sparkles className="h-4 w-4" />
+            {shiny ? 'Shiny activo' : 'Ver shinies'}
           </button>
           <Link
             href="/pokedex"

@@ -2,6 +2,7 @@
 
 import Link from 'next/link';
 import { useState } from 'react';
+import { Sparkles } from 'lucide-react';
 import {
   formatDexNumber,
   formatPokemonName,
@@ -46,13 +47,14 @@ export default function HomeLegendaryStrip({
               type="button"
               onClick={() => setShiny((value) => !value)}
               aria-pressed={shiny}
-              className={`rounded-full px-4 py-2 text-sm font-bold transition ${
+              className={`inline-flex items-center gap-2 rounded-full px-4 py-2 text-sm font-bold transition ${
                 shiny
                   ? 'bg-gradient-to-r from-yellow-300 to-amber-400 text-amber-950 shadow-md'
                   : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
               }`}
             >
-              ✨ {shiny ? 'Shiny activo' : 'Ver shinies'}
+              <Sparkles className="h-4 w-4" />
+              {shiny ? 'Shiny activo' : 'Ver shinies'}
             </button>
             <Link
               href="/pokedex"
@@ -69,8 +71,8 @@ export default function HomeLegendaryStrip({
             return (
               <Link
                 key={entry.id}
-                href={`/buscar?q=${encodeURIComponent(entry.name)}`}
-                className="w-28 flex-none rounded-xl border border-gray-100 bg-gray-50 p-2 text-center transition hover:border-amber-200 hover:bg-amber-50"
+                href={`/pokedex/${entry.id}`}
+                className="animate-fade-up w-28 flex-none rounded-xl border border-gray-100 bg-gray-50 p-2 text-center transition hover:border-amber-200 hover:bg-amber-50"
               >
                 {/* eslint-disable-next-line @next/next/no-img-element */}
                 <img

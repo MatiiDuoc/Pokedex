@@ -19,6 +19,27 @@ export const TYPE_LABELS: Record<string, string> = {
   fairy: 'Hada',
 };
 
+export const TYPE_GRADIENTS: Record<string, string> = {
+  normal: 'from-gray-400 to-gray-600',
+  fire: 'from-red-500 to-orange-500',
+  water: 'from-blue-500 to-cyan-500',
+  grass: 'from-green-500 to-emerald-600',
+  electric: 'from-yellow-300 to-amber-500',
+  ice: 'from-cyan-300 to-blue-400',
+  fighting: 'from-red-700 to-orange-700',
+  poison: 'from-purple-500 to-fuchsia-600',
+  ground: 'from-yellow-600 to-amber-800',
+  flying: 'from-indigo-400 to-sky-500',
+  psychic: 'from-pink-500 to-fuchsia-600',
+  bug: 'from-lime-500 to-green-600',
+  rock: 'from-yellow-700 to-stone-700',
+  ghost: 'from-purple-700 to-indigo-800',
+  dragon: 'from-indigo-700 to-purple-700',
+  dark: 'from-gray-700 to-slate-900',
+  steel: 'from-gray-400 to-slate-500',
+  fairy: 'from-pink-300 to-rose-400',
+};
+
 export const TYPE_COLORS: Record<string, string> = {
   normal: 'bg-gray-400',
   fire: 'bg-red-500',
