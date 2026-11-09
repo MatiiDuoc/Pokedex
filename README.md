@@ -7,8 +7,8 @@ checklists por juego, guías paso a paso y visor 3D.
 ## Características
 
 - **Inicio renovado** con hero, búsqueda global de Pokémon y guías,
-  “Continúa tu aventura”, Pokémon destacados, selector de juego, legendarios
-  destacados y resumen del equipo.
+  “Continúa tu aventura”, Pokémon del día, Pokémon destacados, selector de
+  juego, legendarios destacados y resumen del equipo.
 - **Pokédex Nacional** con las 1025 especies, búsqueda por nombre/número,
   filtros por generación, tipo y categoría especial (legendario, mítico,
   ultraente) y **modo shiny** para ver la versión shiny de todos los Pokémon.
@@ -28,7 +28,11 @@ checklists por juego, guías paso a paso y visor 3D.
   caché de modelos en el Service Worker, ajuste de calidad en móvil y fallback
   a imagen.
 - **Galería 3D** (`/pokedex/3d`) con una selección de modelos interactivos,
-  modo shiny y acceso a la ficha completa de cada Pokémon.
+  filtros por generación, tipo y categoría, modo shiny y acceso a la ficha
+  completa de cada Pokémon.
+- **Comparador de Pokémon** (`/comparar`) para enfrentar estadísticas, tipos,
+  habilidades, altura, peso y total de dos especies.
+- **Exportación del equipo** como imagen PNG desde el Team Builder.
 - **Legendarios y míticos** identificados con badges y filtros, incluyendo
   ultraentes y las especies de todas las generaciones.
 - **Navegación móvil** con barra inferior, iconos Lucide, skeletons de carga,

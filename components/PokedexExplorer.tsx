@@ -2,7 +2,7 @@
 
 import Link from 'next/link';
 import { useDeferredValue, useMemo, useState } from 'react';
-import { Box, Sparkles } from 'lucide-react';
+import { Box, GitCompare, Sparkles } from 'lucide-react';
 import Pagination from './Pagination';
 import {
   LEGENDARY_FILTERS,
@@ -224,6 +224,12 @@ export default function PokedexExplorer({ pokemon }: PokedexExplorerProps) {
               : `${filtered.length} Pokémon encontrados`}
           </div>
           <div className="flex items-center gap-2">
+            <Link
+              href="/comparar"
+              className="inline-flex items-center gap-2 rounded-full bg-white px-4 py-2 text-sm font-bold text-gray-700 shadow-sm transition hover:bg-gray-50"
+            >
+              <GitCompare className="h-4 w-4" /> Comparar
+            </Link>
             <Link
               href="/pokedex/3d"
               className="inline-flex items-center gap-2 rounded-full bg-indigo-600 px-4 py-2 text-sm font-bold text-white shadow-sm transition hover:bg-indigo-700"

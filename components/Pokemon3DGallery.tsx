@@ -1,14 +1,17 @@
 'use client';
 
 import Link from 'next/link';
-import { useState } from 'react';
-import { Box, ExternalLink, Sparkles } from 'lucide-react';
+import { useDeferredValue, useMemo, useState } from 'react';
+import { Box, ExternalLink, Search, Sparkles } from 'lucide-react';
 import Modal3D from '@/components/Modal3D';
 import {
+  LEGENDARY_FILTERS,
   TYPE_COLORS,
   formatPokemonName,
+  getGenerationFromId,
   getLegendaryLabel,
   getTypeLabel,
+  type LegendaryCategory,
 } from '@/lib/pokemon';
 import type { PokemonBasic } from '@/types/pokemon';
 
@@ -19,6 +22,28 @@ interface Pokemon3DGalleryProps {
 export default function Pokemon3DGallery({ pokemon }: Pokemon3DGalleryProps) {
   const [shiny, setShiny] = useState(false);
   const [selected, setSelected] = useState<PokemonBasic | null>(null);
+  const [query, setQuery] = useState('');
+  const [generation, setGeneration] = useState('');
+  const [type, setType] = useState('');
+  const [legendary, setLegendary] = useState<LegendaryCategory | ''>('');
+
+  const deferredQuery = useDeferredValue(query.trim().toLowerCase());
+
+  const filtered = useMemo(() => {
+    return pokemon.filter((entry) => {
+      const matchesQuery =
+        deferredQuery === '' ||
+        entry.name.toLowerCase().includes(deferredQuery) ||
+        entry.id.toString().includes(deferredQuery);
+      const matchesGeneration =
+        generation === '' || getGenerationFromId(entry.id) === Number(generation);
+      const matchesType = type === '' || entry.types.includes(type);
+      const matchesLegendary =
+        legendary === '' || entry.legendaryCategory === legendary;
+
+      return matchesQuery && matchesGeneration && matchesType && matchesLegendary;
+    });
+  }, [pokemon, deferredQuery, generation, type, legendary]);
 
   const preload = (id: number) => {
     void import('./Pokemon3DViewer').then((module) =>
@@ -61,8 +86,84 @@ export default function Pokemon3DGallery({ pokemon }: Pokemon3DGalleryProps) {
           </div>
         </div>
 
-        <div className="mt-6 grid gap-4 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
-          {pokemon.map((entry) => {
+        <div className="mt-6 grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
+          <div className="relative">
+            <label htmlFor="gallery-search" className="sr-only">
+              Buscar Pokémon en la galería
+            </label>
+            <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-gray-400" />
+            <input
+              id="gallery-search"
+              type="search"
+              value={query}
+              onChange={(event) => setQuery(event.target.value)}
+              placeholder="Buscar por nombre o número..."
+              className="w-full rounded-xl border border-gray-300 bg-white py-2.5 pl-9 pr-3 text-sm text-gray-900 placeholder-gray-400 focus:border-red-500 focus:outline-none focus:ring-2 focus:ring-red-200"
+            />
+          </div>
+          <div>
+            <label htmlFor="gallery-generation" className="sr-only">
+              Generación
+            </label>
+            <select
+              id="gallery-generation"
+              value={generation}
+              onChange={(event) => setGeneration(event.target.value)}
+              className="w-full rounded-xl border border-gray-300 bg-white px-3 py-2.5 text-sm text-gray-900 focus:border-red-500 focus:outline-none focus:ring-2 focus:ring-red-200"
+            >
+              <option value="">Todas las generaciones</option>
+              {Array.from({ length: 9 }, (_, index) => index + 1).map((value) => (
+                <option key={value} value={value}>
+                  Generación {value}
+                </option>
+              ))}
+            </select>
+          </div>
+          <div>
+            <label htmlFor="gallery-type" className="sr-only">
+              Tipo
+            </label>
+            <select
+              id="gallery-type"
+              value={type}
+              onChange={(event) => setType(event.target.value)}
+              className="w-full rounded-xl border border-gray-300 bg-white px-3 py-2.5 text-sm text-gray-900 focus:border-red-500 focus:outline-none focus:ring-2 focus:ring-red-200"
+            >
+              <option value="">Todos los tipos</option>
+              {Object.entries(TYPE_COLORS).map(([value]) => (
+                <option key={value} value={value}>
+                  {getTypeLabel(value)}
+                </option>
+              ))}
+            </select>
+          </div>
+          <div>
+            <label htmlFor="gallery-legendary" className="sr-only">
+              Categoría especial
+            </label>
+            <select
+              id="gallery-legendary"
+              value={legendary}
+              onChange={(event) =>
+                setLegendary(event.target.value as LegendaryCategory | '')
+              }
+              className="w-full rounded-xl border border-gray-300 bg-white px-3 py-2.5 text-sm text-gray-900 focus:border-red-500 focus:outline-none focus:ring-2 focus:ring-red-200"
+            >
+              {LEGENDARY_FILTERS.map((filter) => (
+                <option key={filter.value} value={filter.value}>
+                  {filter.value === '' ? 'Todas las categorías' : filter.label}
+                </option>
+              ))}
+            </select>
+          </div>
+        </div>
+
+        <p className="mt-3 text-sm text-gray-500" aria-live="polite">
+          {filtered.length} modelo{filtered.length === 1 ? '' : 's'} en la galería
+        </p>
+
+        <div className="mt-4 grid gap-4 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
+          {filtered.map((entry) => {
             const legendaryLabel = getLegendaryLabel(entry.legendaryCategory);
             const artwork = shiny ? entry.shinyArtworkUrl : entry.spriteUrl;
 
@@ -142,6 +243,12 @@ export default function Pokemon3DGallery({ pokemon }: Pokemon3DGalleryProps) {
             );
           })}
         </div>
+
+        {filtered.length === 0 && (
+          <p className="mt-4 rounded-xl bg-white p-6 text-center text-sm text-gray-500 shadow-sm">
+            No hay modelos 3D con esos filtros.
+          </p>
+        )}
 
         <p className="mt-6 rounded-xl border border-blue-200 bg-blue-50 p-4 text-sm text-blue-900">
           Los modelos 3D son propiedad de Nintendo, Creatures Inc. y GAME FREAK.

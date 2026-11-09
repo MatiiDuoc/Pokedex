@@ -4,6 +4,7 @@ import Link from 'next/link';
 import { useState } from 'react';
 import {
   Check,
+  Download,
   GripVertical,
   Plus,
   ShieldAlert,
@@ -19,6 +20,7 @@ import {
   formatPokemonName,
   getTypeLabel,
 } from '@/lib/pokemon';
+import { downloadTeamImage } from '@/lib/team-image';
 import { getTeamSuggestions } from '@/lib/team-suggestions';
 import {
   getOffensiveCoverage,
@@ -35,6 +37,8 @@ export default function TeamBuilder({ suggestions }: TeamBuilderProps) {
   const { authLoading, user } = useAccount();
   const { team, maxSize, hydrated, remove, move, add, has, isFull } = useTeam();
   const [draggedIndex, setDraggedIndex] = useState<number | null>(null);
+  const [exporting, setExporting] = useState(false);
+  const [exportMessage, setExportMessage] = useState<string | null>(null);
 
   if (authLoading) {
     return (
@@ -83,6 +87,21 @@ export default function TeamBuilder({ suggestions }: TeamBuilderProps) {
     6
   );
 
+  const handleExport = async () => {
+    if (team.length === 0) return;
+
+    setExporting(true);
+    setExportMessage(null);
+    try {
+      await downloadTeamImage(team, user?.displayName);
+      setExportMessage('Imagen del equipo descargada.');
+    } catch {
+      setExportMessage('No se pudo exportar la imagen del equipo.');
+    } finally {
+      setExporting(false);
+    }
+  };
+
   return (
     <div className="mx-auto max-w-5xl px-4 py-10">
       <div className="flex flex-wrap items-end justify-between gap-4">
@@ -95,13 +114,22 @@ export default function TeamBuilder({ suggestions }: TeamBuilderProps) {
             {team.length} de {maxSize} Pokémon · cobertura, debilidades y huecos.
           </p>
         </div>
-        <div className="flex gap-2">
+        <div className="flex flex-wrap gap-2">
           <Link
             href="/pokedex"
             className="inline-flex items-center gap-2 rounded-xl bg-red-600 px-4 py-2.5 text-sm font-bold text-white transition hover:bg-red-700"
           >
             <Plus className="h-4 w-4" /> Añadir Pokémon
           </Link>
+          <button
+            type="button"
+            onClick={() => void handleExport()}
+            disabled={exporting || team.length === 0}
+            className="inline-flex items-center gap-2 rounded-xl bg-indigo-600 px-4 py-2.5 text-sm font-bold text-white transition hover:bg-indigo-700 disabled:cursor-not-allowed disabled:bg-gray-300"
+          >
+            <Download className="h-4 w-4" />
+            {exporting ? 'Generando...' : 'Exportar imagen'}
+          </button>
           <Link
             href="/cuenta"
             className="rounded-xl bg-gray-100 px-4 py-2.5 text-sm font-bold text-gray-800 transition hover:bg-gray-200"
@@ -110,6 +138,15 @@ export default function TeamBuilder({ suggestions }: TeamBuilderProps) {
           </Link>
         </div>
       </div>
+
+      {exportMessage && (
+        <p
+          role="status"
+          className="mt-3 text-sm font-semibold text-gray-500"
+        >
+          {exportMessage}
+        </p>
+      )}
 
       {!hydrated ? (
         <div className="mt-6 grid gap-4 sm:grid-cols-2 lg:grid-cols-3">

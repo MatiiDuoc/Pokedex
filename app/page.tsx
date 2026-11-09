@@ -7,6 +7,7 @@ import HomeHero from '@/components/HomeHero';
 import HomeLegendaryStrip, {
   type LegendaryPreview,
 } from '@/components/HomeLegendaryStrip';
+import HomePokemonOfTheDay from '@/components/HomePokemonOfTheDay';
 import HomeTeamCard from '@/components/HomeTeamCard';
 import { games, getGameBySlug } from '@/data/games';
 import { formatPokemonName } from '@/lib/pokemon';
@@ -60,10 +61,24 @@ export const metadata: Metadata = {
 };
 
 export default async function Home() {
-  const [index, featured] = await Promise.all([
+  const now = new Date();
+  const startOfYear = Date.UTC(now.getUTCFullYear(), 0, 0);
+  const dayOfYear = Math.floor(
+    (now.getTime() - startOfYear) / (24 * 60 * 60 * 1000)
+  );
+  const dailyId = ((dayOfYear * 47) % 1025) + 1;
+
+  const [index, featured, daily] = await Promise.all([
     getPokemonIndex(),
     getPokemonByIds(FEATURED_IDS),
+    getPokemonByIds([dailyId]),
   ]);
+
+  const dateLabel = new Intl.DateTimeFormat('es-ES', {
+    day: 'numeric',
+    month: 'long',
+    timeZone: 'UTC',
+  }).format(now);
 
   const heroPokemon = index.find((entry) => entry.id === 150) ?? index[0];
   const legendaryPreviews: LegendaryPreview[] = LEGENDARY_IDS.map((id) =>
@@ -143,6 +158,9 @@ export default async function Home() {
 
       <div className="space-y-10 py-10">
         <ContinueAdventure suggestedGuides={suggestedGuides} />
+        {daily[0] && (
+          <HomePokemonOfTheDay pokemon={daily[0]} dateLabel={dateLabel} />
+        )}
         <HomeFeaturedPokemon pokemon={featured} />
         <HomeGuides
           featuredGuides={featuredGuides}
