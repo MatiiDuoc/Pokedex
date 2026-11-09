@@ -10,8 +10,9 @@ checklists por juego, guías paso a paso y visor 3D.
   “Continúa tu aventura”, Pokémon del día, Pokémon destacados, selector de
   juego, legendarios destacados y resumen del equipo.
 - **Pokédex Nacional** con las 1025 especies, búsqueda por nombre/número,
-  filtros por generación, tipo y categoría especial (legendario, mítico,
-  ultraente) y **modo shiny** para ver la versión shiny de todos los Pokémon.
+  filtros por generación, tipo, categoría especial (legendario, mítico,
+  ultraente), habilidad y estadística mínima, y **modo shiny** para ver la
+  versión shiny de todos los Pokémon.
 - **Página de detalle por Pokémon** (`/pokedex/[id]`) con artwork shiny,
   estadísticas, habilidades, entrada de la Pokédex, cadena de evolución,
   debilidades/resistencias, visor 3D, captura y SEO propio.
@@ -31,8 +32,9 @@ checklists por juego, guías paso a paso y visor 3D.
   filtros por generación, tipo y categoría, modo shiny y acceso a la ficha
   completa de cada Pokémon.
 - **Comparador de Pokémon** (`/comparar`) para enfrentar estadísticas, tipos,
-  habilidades, altura, peso y total de dos especies.
-- **Exportación del equipo** como imagen PNG desde el Team Builder.
+  habilidades, altura, peso y total de hasta tres especies.
+- **Exportación del equipo** como imagen PNG desde el Team Builder, con temas
+  oscuro, claro y shiny.
 - **Legendarios y míticos** identificados con badges y filtros, incluyendo
   ultraentes y las especies de todas las generaciones.
 - **Navegación móvil** con barra inferior, iconos Lucide, skeletons de carga,
@@ -186,6 +188,18 @@ Para añadir una guía:
 3. Si es un juego principal, añade su `version-group` en
    `data/versionGroups.ts`.
 4. Ejecuta `npm run typecheck`, `npm test` y `npm run build`.
+
+## Filtros avanzados
+
+`public/pokemon-filters.json` contiene tipos, estadísticas base y habilidades de
+las 1025 especies. Se genera desde los CSV oficiales de PokeAPI con:
+
+```bash
+npm run data:filters
+```
+
+El cliente lo descarga solo cuando el usuario activa un filtro de tipo,
+habilidad o estadística, y luego lo reutiliza desde memoria.
 
 ## Modelos 3D
 

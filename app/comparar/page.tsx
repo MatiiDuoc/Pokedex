@@ -15,14 +15,14 @@ import { getPokemonDetail, type PokemonDetail } from '@/services/pokemonDetail';
 export const metadata: Metadata = {
   title: 'Comparar Pokémon',
   description:
-    'Compara estadísticas, tipos, habilidades y totals de dos Pokémon lado a lado.',
+    'Compara estadísticas, tipos, habilidades y totales de hasta tres Pokémon lado a lado.',
   alternates: {
     canonical: '/comparar',
   },
 };
 
 interface ComparePageProps {
-  searchParams: Promise<{ a?: string; b?: string }>;
+  searchParams: Promise<{ a?: string; b?: string; c?: string }>;
 }
 
 function normalize(value: string): string {
@@ -55,14 +55,23 @@ function resolveId(
 }
 
 export default async function ComparePage({ searchParams }: ComparePageProps) {
-  const [{ a, b }, index] = await Promise.all([searchParams, getPokemonIndex()]);
+  const [{ a, b, c }, index] = await Promise.all([
+    searchParams,
+    getPokemonIndex(),
+  ]);
   const idA = resolveId(index, a);
   const idB = resolveId(index, b);
+  const idC = resolveId(index, c);
 
-  const [first, second] = await Promise.all([
+  const [first, second, third] = await Promise.all([
     idA ? getPokemonDetail(idA) : Promise.resolve(null),
     idB ? getPokemonDetail(idB) : Promise.resolve(null),
+    idC ? getPokemonDetail(idC) : Promise.resolve(null),
   ]);
+
+  const details = [first, second, third].filter(
+    (detail): detail is PokemonDetail => detail !== null
+  );
 
   return (
     <div className="min-h-screen bg-gradient-to-b from-white to-slate-50">
@@ -73,7 +82,7 @@ export default async function ComparePage({ searchParams }: ComparePageProps) {
             Comparador
           </p>
           <h1 className="mt-2 text-4xl font-black text-gray-900">
-            Compara dos Pokémon
+            Compara hasta tres Pokémon
           </h1>
           <p className="mx-auto mt-2 max-w-2xl text-sm text-gray-600">
             Estadísticas base, tipos, habilidades, altura, peso y total. Escribe
@@ -83,7 +92,7 @@ export default async function ComparePage({ searchParams }: ComparePageProps) {
 
         <form
           action="/comparar"
-          className="mx-auto mt-6 grid max-w-3xl gap-3 sm:grid-cols-[1fr_1fr_auto]"
+          className="mx-auto mt-6 grid max-w-5xl gap-3 sm:grid-cols-[1fr_1fr_1fr_auto]"
         >
           <div>
             <label htmlFor="compare-a" className="sr-only">
@@ -111,6 +120,19 @@ export default async function ComparePage({ searchParams }: ComparePageProps) {
               className="w-full rounded-xl border border-gray-300 bg-white px-4 py-3 text-gray-900 placeholder-gray-400 focus:border-indigo-500 focus:outline-none focus:ring-2 focus:ring-indigo-200"
             />
           </div>
+          <div>
+            <label htmlFor="compare-c" className="sr-only">
+              Tercer Pokémon opcional
+            </label>
+            <input
+              id="compare-c"
+              name="c"
+              list="pokemon-options"
+              defaultValue={c ?? ''}
+              placeholder="Pokémon 3 (opcional)..."
+              className="w-full rounded-xl border border-gray-300 bg-white px-4 py-3 text-gray-900 placeholder-gray-400 focus:border-indigo-500 focus:outline-none focus:ring-2 focus:ring-indigo-200"
+            />
+          </div>
           <button
             type="submit"
             className="rounded-xl bg-indigo-600 px-6 py-3 text-sm font-bold text-white transition hover:bg-indigo-700"
@@ -127,42 +149,67 @@ export default async function ComparePage({ searchParams }: ComparePageProps) {
           ))}
         </datalist>
 
-        {!first && !second ? (
+        {details.length === 0 ? (
           <div className="mx-auto mt-10 max-w-xl rounded-2xl bg-white p-8 text-center shadow-sm">
             <p className="text-4xl" aria-hidden="true">
               ⚖️
             </p>
             <p className="mt-3 font-bold text-gray-900">
-              Elige dos Pokémon para empezar
+              Elige dos o tres Pokémon para empezar
             </p>
             <p className="mt-1 text-sm text-gray-600">
-              Prueba con “pikachu” y “charizard”, o con “25” y “6”.
+              Prueba con “pikachu”, “charizard” y “blastoise”.
             </p>
           </div>
         ) : (
-          <div className="mt-8 grid gap-5 md:grid-cols-2">
+          <div className="mt-8 grid gap-5 md:grid-cols-3">
             {first ? (
-              <ComparisonCard detail={first} other={second} />
+              <ComparisonCard detail={first} all={details} />
             ) : (
               <EmptySlot label="Primer Pokémon no encontrado" />
             )}
             {second ? (
-              <ComparisonCard detail={second} other={first} />
+              <ComparisonCard detail={second} all={details} />
             ) : (
               <EmptySlot label="Segundo Pokémon no encontrado" />
+            )}
+            {third ? (
+              <ComparisonCard detail={third} all={details} />
+            ) : (
+              <EmptySlot
+                label={
+                  c ? 'Tercer Pokémon no encontrado' : 'Tercer Pokémon opcional'
+                }
+              />
             )}
           </div>
         )}
 
-        {first && second && (
-          <div className="mt-6 rounded-2xl border border-indigo-200 bg-indigo-50 p-5 text-sm text-indigo-900">
-            <strong>Resumen:</strong> {formatPokemonName(first.name)} suma{' '}
-            {first.stats.reduce((total, stat) => total + stat.value, 0)} puntos de
-            estadísticas base frente a{' '}
-            {second.stats.reduce((total, stat) => total + stat.value, 0)} de{' '}
-            {formatPokemonName(second.name)}.
-          </div>
-        )}
+        {details.length > 1 &&
+          (() => {
+            const ranked = [...details].sort(
+              (a, b) =>
+                b.stats.reduce((total, stat) => total + stat.value, 0) -
+                a.stats.reduce((total, stat) => total + stat.value, 0)
+            );
+
+            return (
+              <div className="mt-6 rounded-2xl border border-indigo-200 bg-indigo-50 p-5 text-sm text-indigo-900">
+                <strong>Resumen:</strong>{' '}
+                {ranked
+                  .map(
+                    (detail) =>
+                      `${formatPokemonName(detail.name)} (${detail.stats.reduce(
+                        (total, stat) => total + stat.value,
+                        0
+                      )})`
+                  )
+                  .join(' · ')}
+                . El mayor total es para{' '}
+                <strong>{formatPokemonName(ranked[0].name)}</strong>.
+              </div>
+            );
+          })()}
       </div>
     </div>
   );
@@ -170,22 +217,19 @@ export default async function ComparePage({ searchParams }: ComparePageProps) {
 
 function ComparisonCard({
   detail,
-  other,
+  all,
 }: {
   detail: PokemonDetail;
-  other: PokemonDetail | null;
+  all: PokemonDetail[];
 }) {
   const gradient =
     TYPE_GRADIENTS[detail.types[0] ?? 'normal'] ?? 'from-indigo-500 to-purple-600';
   const total = detail.stats.reduce((sum, stat) => sum + stat.value, 0);
-  const otherTotal = other
-    ? other.stats.reduce((sum, stat) => sum + stat.value, 0)
-    : null;
-  const legendaryLabel = getLegendaryLabel(detail.legendaryCategory);
-
-  const otherStats = new Map(
-    (other?.stats ?? []).map((stat) => [stat.name, stat.value])
+  const totals = all.map((entry) =>
+    entry.stats.reduce((sum, stat) => sum + stat.value, 0)
   );
+  const maxTotal = Math.max(...totals);
+  const legendaryLabel = getLegendaryLabel(detail.legendaryCategory);
 
   return (
     <article className="overflow-hidden rounded-2xl bg-white shadow-sm">
@@ -226,22 +270,26 @@ function ComparisonCard({
       <div className="p-5">
         <dl className="space-y-3">
           {detail.stats.map((stat) => {
-            const otherValue = otherStats.get(stat.name);
-            const better =
-              otherValue !== undefined && stat.value > otherValue
-                ? 'text-green-600'
-                : otherValue !== undefined && stat.value < otherValue
-                  ? 'text-red-500'
-                  : 'text-gray-900';
+            const maxValue = Math.max(
+              ...all.map(
+                (entry) =>
+                  entry.stats.find((item) => item.name === stat.name)?.value ?? 0
+              )
+            );
+            const isBest = all.length > 1 && stat.value === maxValue;
             return (
               <div key={stat.name}>
                 <div className="flex justify-between text-xs font-semibold text-gray-600">
                   <span>{getStatLabel(stat.name)}</span>
-                  <span className={`font-black ${better}`}>
+                  <span
+                    className={`font-black ${
+                      isBest ? 'text-green-600' : 'text-gray-900'
+                    }`}
+                  >
                     {stat.value}
-                    {otherValue !== undefined && (
-                      <span className="ml-1 font-semibold text-gray-400">
-                        / {otherValue}
+                    {isBest && (
+                      <span className="ml-1 rounded-full bg-green-100 px-1.5 py-0.5 text-[9px] font-bold text-green-700">
+                        Mejor
                       </span>
                     )}
                   </span>
@@ -259,11 +307,14 @@ function ComparisonCard({
 
         <div className="mt-4 flex items-center justify-between rounded-xl bg-gray-50 px-3 py-2 text-sm">
           <span className="font-semibold text-gray-600">Total</span>
-          <span className="font-black text-gray-900">
+          <span
+            className={`font-black ${
+              all.length > 1 && total === maxTotal
+                ? 'text-green-600'
+                : 'text-gray-900'
+            }`}
+          >
             {total}
-            {otherTotal !== null && (
-              <span className="ml-1 font-semibold text-gray-400">/ {otherTotal}</span>
-            )}
           </span>
         </div>
 

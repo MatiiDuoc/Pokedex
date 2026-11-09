@@ -2,7 +2,13 @@
 
 import Link from 'next/link';
 import { useDeferredValue, useMemo, useState } from 'react';
-import { Box, GitCompare, Sparkles } from 'lucide-react';
+import {
+  Box,
+  GitCompare,
+  SlidersHorizontal,
+  Sparkles,
+  X,
+} from 'lucide-react';
 import Pagination from './Pagination';
 import {
   LEGENDARY_FILTERS,
@@ -11,10 +17,45 @@ import {
   formatPokemonName,
   getGenerationFromId,
   getLegendaryLabel,
+  getStatLabel,
   type LegendaryCategory,
 } from '@/lib/pokemon';
-import { useTypeFilter } from '@/lib/useTypeFilter';
+import { usePokemonFilters } from '@/lib/usePokemonFilters';
 import type { PokemonIndexEntry } from '@/types/pokemon';
+
+const ADVANCED_ABILITIES = [
+  'levitate',
+  'intimidate',
+  'protean',
+  'multiscale',
+  'huge-power',
+  'speed-boost',
+  'technician',
+  'adaptability',
+  'mold-breaker',
+  'magic-guard',
+  'wonder-guard',
+  'sturdy',
+  'regenerator',
+  'natural-cure',
+  'drought',
+  'drizzle',
+  'sand-stream',
+  'snow-warning',
+  'prankster',
+  'unaware',
+];
+
+const STAT_OPTIONS = [
+  'hp',
+  'attack',
+  'defense',
+  'special-attack',
+  'special-defense',
+  'speed',
+] as const;
+
+const MIN_STAT_OPTIONS = [50, 75, 100, 120, 150, 180];
 
 interface PokedexExplorerProps {
   pokemon: PokemonIndexEntry[];
@@ -27,13 +68,26 @@ export default function PokedexExplorer({ pokemon }: PokedexExplorerProps) {
   const [generation, setGeneration] = useState('');
   const [type, setType] = useState('');
   const [legendary, setLegendary] = useState<LegendaryCategory | ''>('');
+  const [ability, setAbility] = useState('');
+  const [stat, setStat] = useState('');
+  const [minStat, setMinStat] = useState('100');
+  const [showAdvanced, setShowAdvanced] = useState(false);
   const [shiny, setShiny] = useState(false);
   const [page, setPage] = useState(1);
 
   const deferredQuery = useDeferredValue(query.trim().toLowerCase());
-  const { names: typeNames, loading: typeLoading } = useTypeFilter(type);
+  const filtersEnabled = type !== '' || ability !== '' || stat !== '';
+  const { data: filterData, loading: filtersLoading } =
+    usePokemonFilters(filtersEnabled);
+
+  const filterMap = useMemo(
+    () => new Map((filterData ?? []).map((entry) => [entry.id, entry])),
+    [filterData]
+  );
 
   const filtered = useMemo(() => {
+    const dataReady = !filtersEnabled || filterData !== null;
+
     return pokemon.filter((entry) => {
       const matchesQuery =
         deferredQuery === '' ||
@@ -41,14 +95,44 @@ export default function PokedexExplorer({ pokemon }: PokedexExplorerProps) {
         entry.id.toString().includes(deferredQuery);
       const matchesGeneration =
         generation === '' || getGenerationFromId(entry.id) === Number(generation);
+      const entryFilters = filterMap.get(entry.id);
       const matchesType =
-        type === '' || typeNames === null || typeNames.has(entry.name);
+        !dataReady ||
+        type === '' ||
+        (entryFilters?.types.includes(type) ?? false);
+      const matchesAbility =
+        !dataReady ||
+        ability === '' ||
+        (entryFilters?.abilities.includes(ability) ?? false);
+      const statValue =
+        stat === '' ? 0 : entryFilters?.stats[stat as keyof typeof entryFilters.stats] ?? 0;
+      const matchesStat =
+        !dataReady || stat === '' || statValue >= Number(minStat);
       const matchesLegendary =
         legendary === '' || entry.legendaryCategory === legendary;
 
-      return matchesQuery && matchesGeneration && matchesType && matchesLegendary;
+      return (
+        matchesQuery &&
+        matchesGeneration &&
+        matchesType &&
+        matchesAbility &&
+        matchesStat &&
+        matchesLegendary
+      );
     });
-  }, [pokemon, deferredQuery, generation, type, typeNames, legendary]);
+  }, [
+    pokemon,
+    deferredQuery,
+    generation,
+    type,
+    ability,
+    stat,
+    minStat,
+    filterData,
+    filterMap,
+    filtersEnabled,
+    legendary,
+  ]);
 
   const totalPages = Math.max(1, Math.ceil(filtered.length / ITEMS_PER_PAGE));
   const safePage = Math.min(page, totalPages);
@@ -217,10 +301,120 @@ export default function PokedexExplorer({ pokemon }: PokedexExplorerProps) {
           </div>
         </div>
 
+        {showAdvanced && (
+          <div className="mb-6 grid gap-4 rounded-2xl border border-gray-200 bg-white p-4 shadow-sm md:grid-cols-3">
+            <div>
+              <label
+                htmlFor="advanced-ability"
+                className="mb-1 block text-xs font-bold text-gray-600"
+              >
+                Habilidad
+              </label>
+              <select
+                id="advanced-ability"
+                value={ability}
+                onChange={(event) => {
+                  setAbility(event.target.value);
+                  resetPage();
+                }}
+                className="w-full rounded-lg border border-gray-300 bg-white px-3 py-2.5 text-sm text-gray-900 focus:border-red-500 focus:outline-none focus:ring-2 focus:ring-red-200"
+              >
+                <option value="">Cualquier habilidad</option>
+                {ADVANCED_ABILITIES.map((value) => (
+                  <option key={value} value={value}>
+                    {formatPokemonName(value)}
+                  </option>
+                ))}
+              </select>
+            </div>
+            <div>
+              <label
+                htmlFor="advanced-stat"
+                className="mb-1 block text-xs font-bold text-gray-600"
+              >
+                Estadística mínima
+              </label>
+              <select
+                id="advanced-stat"
+                value={stat}
+                onChange={(event) => {
+                  setStat(event.target.value);
+                  resetPage();
+                }}
+                className="w-full rounded-lg border border-gray-300 bg-white px-3 py-2.5 text-sm text-gray-900 focus:border-red-500 focus:outline-none focus:ring-2 focus:ring-red-200"
+              >
+                <option value="">Sin filtro de estadística</option>
+                {STAT_OPTIONS.map((value) => (
+                  <option key={value} value={value}>
+                    {getStatLabel(value)}
+                  </option>
+                ))}
+              </select>
+            </div>
+            <div>
+              <label
+                htmlFor="advanced-min-stat"
+                className="mb-1 block text-xs font-bold text-gray-600"
+              >
+                Valor mínimo
+              </label>
+              <select
+                id="advanced-min-stat"
+                value={minStat}
+                onChange={(event) => {
+                  setMinStat(event.target.value);
+                  resetPage();
+                }}
+                disabled={stat === ''}
+                className="w-full rounded-lg border border-gray-300 bg-white px-3 py-2.5 text-sm text-gray-900 focus:border-red-500 focus:outline-none focus:ring-2 focus:ring-red-200 disabled:cursor-not-allowed disabled:bg-gray-100 disabled:text-gray-400"
+              >
+                {MIN_STAT_OPTIONS.map((value) => (
+                  <option key={value} value={value}>
+                    {value} o más
+                  </option>
+                ))}
+              </select>
+            </div>
+            <p className="text-xs text-gray-400 md:col-span-3">
+              Los datos de tipos, estadísticas y habilidades se cargan una sola
+              vez desde el índice local de PokeAPI.
+            </p>
+          </div>
+        )}
+
         <div className="mb-4 flex flex-wrap items-center justify-between gap-3">
+          <div className="flex flex-wrap items-center gap-2">
+            <button
+              type="button"
+              onClick={() => setShowAdvanced((value) => !value)}
+              className="inline-flex items-center gap-2 rounded-lg bg-white px-4 py-2 text-sm font-bold text-gray-700 shadow-sm transition hover:bg-gray-50"
+            >
+              <SlidersHorizontal className="h-4 w-4" />
+              Filtros avanzados
+              {(ability || stat) && (
+                <span className="rounded-full bg-indigo-100 px-2 py-0.5 text-[10px] font-black text-indigo-700">
+                  {[ability, stat].filter(Boolean).length}
+                </span>
+              )}
+            </button>
+            {(type || ability || stat) && (
+              <button
+                type="button"
+                onClick={() => {
+                  setType('');
+                  setAbility('');
+                  setStat('');
+                  resetPage();
+                }}
+                className="inline-flex items-center gap-1 rounded-lg px-3 py-2 text-sm font-bold text-red-600 transition hover:bg-red-50"
+              >
+                <X className="h-3.5 w-3.5" /> Limpiar avanzados
+              </button>
+            )}
+          </div>
           <div className="text-sm text-gray-600" aria-live="polite">
-            {typeLoading
-              ? 'Cargando filtro de tipo...'
+            {filtersLoading
+              ? 'Cargando filtros...'
               : `${filtered.length} Pokémon encontrados`}
           </div>
           <div className="flex items-center gap-2">

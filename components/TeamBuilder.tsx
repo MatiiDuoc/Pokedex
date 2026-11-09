@@ -20,7 +20,10 @@ import {
   formatPokemonName,
   getTypeLabel,
 } from '@/lib/pokemon';
-import { downloadTeamImage } from '@/lib/team-image';
+import {
+  downloadTeamImage,
+  type TeamImageTheme,
+} from '@/lib/team-image';
 import { getTeamSuggestions } from '@/lib/team-suggestions';
 import {
   getOffensiveCoverage,
@@ -39,6 +42,7 @@ export default function TeamBuilder({ suggestions }: TeamBuilderProps) {
   const [draggedIndex, setDraggedIndex] = useState<number | null>(null);
   const [exporting, setExporting] = useState(false);
   const [exportMessage, setExportMessage] = useState<string | null>(null);
+  const [exportTheme, setExportTheme] = useState<TeamImageTheme>('dark');
 
   if (authLoading) {
     return (
@@ -93,7 +97,7 @@ export default function TeamBuilder({ suggestions }: TeamBuilderProps) {
     setExporting(true);
     setExportMessage(null);
     try {
-      await downloadTeamImage(team, user?.displayName);
+      await downloadTeamImage(team, user?.displayName, { theme: exportTheme });
       setExportMessage('Imagen del equipo descargada.');
     } catch {
       setExportMessage('No se pudo exportar la imagen del equipo.');
@@ -121,6 +125,18 @@ export default function TeamBuilder({ suggestions }: TeamBuilderProps) {
           >
             <Plus className="h-4 w-4" /> Añadir Pokémon
           </Link>
+          <select
+            aria-label="Tema de la imagen del equipo"
+            value={exportTheme}
+            onChange={(event) =>
+              setExportTheme(event.target.value as TeamImageTheme)
+            }
+            className="rounded-xl border border-gray-300 bg-white px-3 py-2.5 text-sm font-bold text-gray-700 focus:border-indigo-500 focus:outline-none focus:ring-2 focus:ring-indigo-200"
+          >
+            <option value="dark">Tema oscuro</option>
+            <option value="light">Tema claro</option>
+            <option value="shiny">Tema shiny</option>
+          </select>
           <button
             type="button"
             onClick={() => void handleExport()}

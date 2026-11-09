@@ -73,10 +73,21 @@ function drawTypePill(
   return width;
 }
 
+export type TeamImageTheme = 'dark' | 'light' | 'shiny';
+
+export interface TeamImageOptions {
+  theme?: TeamImageTheme;
+}
+
 export async function downloadTeamImage(
   team: PokemonBasic[],
-  userName?: string
+  userName?: string,
+  options: TeamImageOptions = {}
 ): Promise<void> {
+  const theme = options.theme ?? 'dark';
+  const isLight = theme === 'light';
+  const isShiny = theme === 'shiny';
+
   const width = 1200;
   const height = 630;
   const canvas = document.createElement('canvas');
@@ -89,13 +100,25 @@ export async function downloadTeamImage(
   }
 
   const background = context.createLinearGradient(0, 0, width, height);
-  background.addColorStop(0, '#020617');
-  background.addColorStop(0.55, '#1e1b4b');
-  background.addColorStop(1, '#4c1d95');
+  if (isLight) {
+    background.addColorStop(0, '#f8fafc');
+    background.addColorStop(0.55, '#e0e7ff');
+    background.addColorStop(1, '#fef3c7');
+  } else if (isShiny) {
+    background.addColorStop(0, '#1c1917');
+    background.addColorStop(0.55, '#4c1d95');
+    background.addColorStop(1, '#92400e');
+  } else {
+    background.addColorStop(0, '#020617');
+    background.addColorStop(0.55, '#1e1b4b');
+    background.addColorStop(1, '#4c1d95');
+  }
   context.fillStyle = background;
   context.fillRect(0, 0, width, height);
 
-  context.fillStyle = 'rgba(255,255,255,0.06)';
+  context.fillStyle = isLight
+    ? 'rgba(15,23,42,0.05)'
+    : 'rgba(255,255,255,0.06)';
   context.beginPath();
   context.arc(1040, 60, 180, 0, Math.PI * 2);
   context.fill();
@@ -103,15 +126,21 @@ export async function downloadTeamImage(
   context.arc(100, 620, 140, 0, Math.PI * 2);
   context.fill();
 
-  context.fillStyle = '#fca5a5';
+  context.fillStyle = isLight
+    ? '#dc2626'
+    : isShiny
+      ? '#fbbf24'
+      : '#fca5a5';
   context.font = '700 20px Arial, sans-serif';
   context.fillText('POKÉDEX + GUÍAS', 48, 58);
 
-  context.fillStyle = '#ffffff';
+  context.fillStyle = isLight ? '#0f172a' : '#ffffff';
   context.font = '900 42px Arial, sans-serif';
   context.fillText('Mi equipo Pokémon', 48, 114);
 
-  context.fillStyle = 'rgba(255,255,255,0.65)';
+  context.fillStyle = isLight
+    ? 'rgba(15,23,42,0.65)'
+    : 'rgba(255,255,255,0.65)';
   context.font = '500 20px Arial, sans-serif';
   context.fillText(
     userName ? `Entrenador: ${userName}` : 'Equipo guardado en tu cuenta',
@@ -119,7 +148,15 @@ export async function downloadTeamImage(
     148
   );
 
-  const images = await Promise.all(team.map((pokemon) => loadImage(pokemon.spriteUrl)));
+  const images = await Promise.all(
+    team.map((pokemon) =>
+      loadImage(
+        isShiny
+          ? pokemon.shinyArtworkUrl || pokemon.spriteUrl
+          : pokemon.spriteUrl
+      )
+    )
+  );
 
   const slots = 6;
   const columns = 3;
@@ -137,15 +174,21 @@ export async function downloadTeamImage(
     const y = startY + row * (slotHeight + gapY);
     const pokemon = team[index];
 
-    context.fillStyle = 'rgba(255,255,255,0.07)';
-    context.strokeStyle = 'rgba(255,255,255,0.16)';
+    context.fillStyle = isLight
+      ? 'rgba(15,23,42,0.04)'
+      : 'rgba(255,255,255,0.07)';
+    context.strokeStyle = isLight
+      ? 'rgba(15,23,42,0.14)'
+      : 'rgba(255,255,255,0.16)';
     context.lineWidth = 2;
     roundedRect(context, x, y, slotWidth, slotHeight, 22);
     context.fill();
     context.stroke();
 
     if (!pokemon) {
-      context.fillStyle = 'rgba(255,255,255,0.35)';
+      context.fillStyle = isLight
+        ? 'rgba(15,23,42,0.35)'
+        : 'rgba(255,255,255,0.35)';
       context.font = '700 20px Arial, sans-serif';
       context.fillText('Hueco libre', x + 24, y + 110);
       continue;
@@ -155,13 +198,15 @@ export async function downloadTeamImage(
     if (image) {
       context.drawImage(image, x + 18, y + 25, 145, 145);
     } else {
-      context.fillStyle = 'rgba(255,255,255,0.12)';
+      context.fillStyle = isLight
+        ? 'rgba(15,23,42,0.08)'
+        : 'rgba(255,255,255,0.12)';
       context.beginPath();
       context.arc(x + 90, y + 98, 58, 0, Math.PI * 2);
       context.fill();
     }
 
-    context.fillStyle = '#ffffff';
+    context.fillStyle = isLight ? '#0f172a' : '#ffffff';
     context.font = '800 24px Arial, sans-serif';
     context.fillText(
       formatPokemonName(pokemon.name).slice(0, 18),
@@ -169,7 +214,9 @@ export async function downloadTeamImage(
       y + 52
     );
 
-    context.fillStyle = 'rgba(255,255,255,0.55)';
+    context.fillStyle = isLight
+      ? 'rgba(15,23,42,0.55)'
+      : 'rgba(255,255,255,0.55)';
     context.font = '600 17px Arial, sans-serif';
     context.fillText(
       `#${pokemon.id.toString().padStart(4, '0')}`,
@@ -185,7 +232,9 @@ export async function downloadTeamImage(
     }
   }
 
-  context.fillStyle = 'rgba(255,255,255,0.45)';
+  context.fillStyle = isLight
+    ? 'rgba(15,23,42,0.45)'
+    : 'rgba(255,255,255,0.45)';
   context.font = '500 16px Arial, sans-serif';
   context.fillText('pokedex-guias.vercel.app', 48, 606);
 
