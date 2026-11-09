@@ -3,7 +3,10 @@ import { Geist, Geist_Mono } from 'next/font/google';
 import './globals.css';
 import SiteHeader from '@/components/SiteHeader';
 import PokemonTeam from '@/components/PokemonTeam';
-import { TeamProvider } from '@/components/TeamProvider';
+import { AccountProvider } from '@/components/AccountProvider';
+import ServiceWorkerRegistration from '@/components/ServiceWorkerRegistration';
+import { Analytics } from '@vercel/analytics/next';
+import { SpeedInsights } from '@vercel/speed-insights/next';
 import { getSiteUrl } from '@/lib/site';
 
 const geistSans = Geist({
@@ -55,7 +58,7 @@ export default function RootLayout({
   return (
     <html lang="es">
       <body className={`${geistSans.variable} ${geistMono.variable} antialiased`}>
-        <TeamProvider>
+        <AccountProvider>
           <SiteHeader />
           <main>{children}</main>
           <footer className="border-t border-gray-200 bg-white px-4 py-8 text-center text-sm text-gray-500">
@@ -69,7 +72,10 @@ export default function RootLayout({
             </p>
           </footer>
           <PokemonTeam />
-        </TeamProvider>
+          <ServiceWorkerRegistration />
+          <Analytics />
+          <SpeedInsights />
+        </AccountProvider>
       </body>
     </html>
   );

@@ -1,40 +1,45 @@
 # Pokédex + Guías
 
-Aplicación web para consultar el Pokédex Nacional y seguir guías de todos los
-juegos principales de Pokémon. Está pensada para usarse mientras se juega:
-checklists de progreso, gimnasios, Alto Mando, legendarios, exclusivas de
-versión y Pokédex por juego.
+Aplicación web para consultar el Pokédex Nacional y seguir guías de los juegos
+principales y spin-offs de Pokémon. Incluye cuentas, progreso sincronizado,
+checklists por juego, guías paso a paso y visor 3D.
 
 ## Características
 
-- **Pokédex Nacional** con las 1025 especies, búsqueda por nombre/número y
-  filtro por generación.
-- **Pokédex destacada** con tipos, estadísticas, altura, peso y equipo de 6
-  Pokémon guardado en el navegador.
-- **22 guías** de juegos principales desde la Generación I hasta la IX:
-  - Rojo/Azul/Verde, Amarillo
-  - Oro/Plata, Cristal, HeartGold/SoulSilver
-  - Rubí/Zafiro, Esmeralda, Rojo Fuego/Verde Hoja, Rubí Omega/Zafiro Alfa
-  - Diamante/Perla, Platino, Diamante Brillante/Perla Reluciente
-  - Negro/Blanco, Negro 2/Blanco 2
-  - X/Y
-  - Sol/Luna, Ultra Sol/Ultra Luna
-  - Let's Go, Pikachu!/Eevee!
-  - Espada/Escudo
-  - Leyendas: Arceus
-  - Escarlata/Púrpura
-  - Leyendas: Z-A
-- **Checklist interactiva** por juego: pasos completados, objetivos y Pokémon
-  capturados. El progreso se guarda en `localStorage`.
-- **Filtros** por generación, región y plataforma.
-- **SEO**: metadatos, `sitemap.xml`, `robots.txt` y páginas estáticas para cada
-  guía.
-- **Seguridad**: cabeceras CSP, HSTS en producción, `nosniff`, `X-Frame-Options`,
-  `Referrer-Policy` y `Permissions-Policy`.
+- **Pokédex Nacional** con las 1025 especies, búsqueda por nombre/número,
+  filtros por generación, tipo y categoría especial (legendario, mítico,
+  ultraente) y **modo shiny** para ver la versión shiny de todos los Pokémon.
+- **Legendarios y míticos** identificados con badges y filtros, incluyendo
+  ultraentes y las especies de todas las generaciones.
+- **22 guías de juegos principales** desde la Generación I hasta la IX,
+  incluyendo remakes y DLC.
+- **14 guías de spin-offs**: Mystery Dungeon, Ranger, Colosseum, XD, Snap,
+  New Snap, Pokkén y Conquest.
+- **Pokédex regional exacta** por juego usando los `version-group` y `pokedex`
+  oficiales de PokeAPI. Ejemplos: Galar + DLC (584 especies), Paldea + DLC
+  (664), Lumiose + Hiperspacial (364).
+- **Cuentas de usuario** con registro, login, logout y sesiones seguras.
+- **Progreso por usuario** en Postgres: cada cuenta tiene sus propios Pokémon
+  capturados, checklists y equipo de 6. Nadie más puede modificarlos.
+- **Checklist interactiva** por guía con filtros, paginación y marcar páginas.
+- **Equipo Pokémon** de 6 guardado en la cuenta.
+- **Visor 3D** con Three.js y modelos GLB de Pokémon-3D-api, con fallback a la
+  imagen oficial si el modelo no está disponible.
+- **Búsqueda global** de Pokémon y guías, con filtros por tipo, generación y
+  categoría.
+- **PWA offline**: las páginas visitadas se guardan en caché y hay una página
+  `/offline`. Los cambios de progreso requieren conexión.
+- **Seguridad**: scrypt para contraseñas, tokens de sesión hasheados, cookies
+  httpOnly/SameSite, comprobación de origen, rate limiting en Postgres y
+  cabeceras CSP/HSTS.
+- **SEO**: metadatos, sitemap, robots, manifest y páginas estáticas.
+- **Observabilidad**: Vercel Analytics y Speed Insights.
+- **Tests**: Vitest + Testing Library y workflow de CI en GitHub Actions.
 
 > Proyecto fan sin afiliación con Nintendo, Game Freak o The Pokémon Company.
-> Los datos de Pokémon provienen de [PokeAPI](https://pokeapi.co/). Las guías se
-> elaboran a partir de información pública de los juegos.
+> Datos de Pokémon: [PokeAPI](https://pokeapi.co/). Modelos 3D:
+> [Pokémon-3D-api](https://github.com/Pokemon-3D-api/assets); los modelos son
+> propiedad de Nintendo, Creatures Inc. y GAME FREAK.
 
 ## Stack
 
@@ -42,12 +47,15 @@ versión y Pokédex por juego.
 - React 19
 - TypeScript
 - Tailwind CSS 4
+- Neon Postgres + `@neondatabase/serverless`
+- Three.js + `@react-three/fiber` + `@react-three/drei`
 - PokeAPI
-- Vercel (despliegue recomendado)
+- Vitest + Testing Library
+- Vercel
 
 ## Desarrollo local
 
-Requisitos: Node.js 20+ y npm.
+Requisitos: Node.js 20.9+ y npm.
 
 ```bash
 npm install
@@ -56,116 +64,132 @@ npm run dev
 
 Abre [http://localhost:3000](http://localhost:3000).
 
-Comandos útiles:
+Comandos:
 
 ```bash
 npm run lint       # ESLint
-npm run typecheck  # TypeScript sin emitir
+npm run typecheck  # TypeScript
+npm test           # Vitest
 npm run build      # Build de producción
 npm run start      # Servir el build
+npm run db:migrate # Crear/actualizar tablas en Postgres
 ```
 
-## Estructura
+### Base de datos local
 
-```
-app/
-  api/pokemon/       API paginada de la Pokédex destacada
-  guias/             Listado y páginas de guías
-  pokedex/           Pokédex Nacional completa
-  layout.tsx         Layout global, cabecera y equipo
-  sitemap.ts         Sitemap dinámico
-  robots.ts          Robots.txt
-components/          UI (tarjetas, checklist, equipo, filtros...)
-data/games.ts        Datos curados de las 22 guías
-lib/                 Utilidades de tipos, progreso y sitio
-services/            Cliente de PokeAPI e índice nacional
-types/               Tipos compartidos
-```
+1. Crea una base Postgres gratuita en [Neon](https://neon.tech) o conecta la
+   integración de Neon en Vercel.
+2. Copia `.env.example` a `.env.local` y rellena `DATABASE_URL`. Si usas Vercel:
 
-## Añadir o editar una guía
+   ```bash
+   vercel link
+   vercel env pull .env.local
+   ```
 
-Toda la información de las guías vive en `data/games.ts`. Cada entrada cumple
-el tipo `GameGuide` (`types/game.ts`). Para añadir un juego:
+3. Aplica el esquema:
 
-1. Copia una entrada existente de `data/games.ts`.
-2. Cambia `slug`, `title`, `generation`, `region`, `platform`, `releaseYear`,
-   `versions`, rangos de Pokédex, iniciales, legendarios, exclusivas, gimnasios,
-   Alto Mando, campeón, pasos, consejos y checklist.
-3. Añade el `slug` a la lista de `games` (ya se genera automáticamente la ruta
-   `/guias/[slug]`).
-4. Ejecuta `npm run build` para comprobar tipos y generación estática.
+   ```bash
+   npm run db:migrate
+   ```
 
-El rango `dexRange` se usa para construir la checklist de Pokémon. Para juegos
-con Pokédex regional propia (por ejemplo, Lumiose en Leyendas: Z-A), ajusta el
-rango y el texto `dexScope`/`dexNote` para reflejarlo.
+Tablas creadas: `users`, `sessions`, `progress` y `rate_limits`.
 
-## Progreso del usuario
+## Autenticación y datos
 
-El progreso se guarda en el navegador:
+- `POST /api/auth/register` — crea una cuenta.
+- `POST /api/auth/login` — inicia sesión.
+- `POST /api/auth/logout` — cierra la sesión.
+- `GET /api/auth/me` — devuelve el usuario actual.
+- `GET /api/account` — devuelve todas las guías y el equipo del usuario.
+- `PUT /api/account` — guarda `{ slug, data }` (o `__team__` para el equipo).
+- `DELETE /api/account` — borra todo el progreso del usuario.
 
-- Equipo: `pokedex:team`
-- Guía: `pokedex:guide:<slug>`
+Detalles de seguridad:
 
-No hay cuentas ni base de datos. Si el usuario borra los datos del sitio o
-cambia de dispositivo, el progreso se pierde. La sincronización con una cuenta
-es una mejora futura.
+- Contraseñas con **scrypt** (N=16384, r=8, p=1) y salt aleatorio.
+- Sesiones de 30 días; en la base de datos solo se guarda el hash SHA-256 del
+  token. La cookie es `httpOnly`, `SameSite=Lax` y `Secure` en producción.
+- Las mutaciones comprueban `Origin` para reducir CSRF.
+- Rate limiting por IP/usuario en Postgres.
+- Validación y saneamiento de todos los datos de progreso y equipo.
+- El progreso se guarda por `user_id`; no hay estado global compartido.
+
+## Guías y Pokédex
+
+Toda la información de las guías vive en:
+
+- `data/games.ts` — juegos principales.
+- `data/spinOffs.ts` — spin-offs.
+- `data/versionGroups.ts` — relación slug → `version-group` de PokeAPI.
+
+La Pokédex de cada guía se obtiene de `services/gamePokedex.ts`, que consulta el
+Pokédex regional oficial de PokeAPI (incluyendo DLC). Si PokeAPI falla, usa el
+rango nacional de `dexRange` como respaldo.
+
+Para añadir una guía:
+
+1. Copia una entrada existente en `data/games.ts` o `data/spinOffs.ts`.
+2. Rellena el tipo `GameGuide` (`types/game.ts`).
+3. Si es un juego principal, añade su `version-group` en
+   `data/versionGroups.ts`.
+4. Ejecuta `npm run typecheck`, `npm test` y `npm run build`.
+
+## PWA offline
+
+- `public/sw.js` cachea páginas visitadas, assets estáticos y una página
+  `/offline`.
+- El service worker solo se registra en producción.
+- Las llamadas a `/api/*` nunca se cachean: login y progreso siempre van a la
+  red.
+- Al cambiar la versión de la app, actualiza `VERSION` en `public/sw.js`.
 
 ## Despliegue en Vercel
 
-### Opción A: desde GitHub (recomendado)
+### Opción A: GitHub (recomendado)
 
-1. Sube el proyecto a un repositorio de GitHub.
-2. Entra en [vercel.com/new](https://vercel.com/new) e importa el repositorio.
-3. Vercel detecta Next.js automáticamente. No cambies los comandos:
-   - Build Command: `npm run build`
-   - Output Directory: `.next` (automático)
-4. (Opcional) Define `NEXT_PUBLIC_SITE_URL` con tu dominio final, por ejemplo
-   `https://pokedex-guias.vercel.app`.
-5. Pulsa **Deploy**.
+1. Sube el proyecto a GitHub.
+2. Importa el repositorio en [vercel.com/new](https://vercel.com/new).
+3. Conecta Neon desde **Storage / Integrations** y asegúrate de que
+   `DATABASE_URL` esté disponible en Production, Preview y Development.
+4. Define `NEXT_PUBLIC_SITE_URL` con tu dominio final (opcional).
+5. Despliega.
 
 ### Opción B: CLI
 
 ```bash
 npm install -g vercel
 vercel login
-vercel          # preview
-vercel --prod   # producción
+vercel link
+vercel env pull .env.local
+npm run db:migrate
+vercel --prod
 ```
 
-### Después del despliegue
+Después del despliegue:
 
-- Comprueba `/sitemap.xml` y `/robots.txt`.
-- Si usas dominio propio, actualiza `NEXT_PUBLIC_SITE_URL` en
-  **Project Settings → Environment Variables** y vuelve a desplegar.
-- Las páginas de guías son estáticas (ISR de 7 días); la Pokédex Nacional
-  también se regenera cada 7 días. Los datos de PokeAPI se cachean 24 horas.
+- Comprueba `/sitemap.xml`, `/robots.txt` y `/manifest.webmanifest`.
+- Verifica que el login funciona y que el progreso persiste al recargar.
+- Revisa Vercel Analytics y Speed Insights en el dashboard.
+- Si cambias de dominio, actualiza `NEXT_PUBLIC_SITE_URL`.
 
 ## Variables de entorno
 
 | Variable | Obligatoria | Descripción |
 | --- | --- | --- |
-| `NEXT_PUBLIC_SITE_URL` | No | URL pública canónica. Si no se define, se usa la URL de Vercel o `localhost:3000`. |
+| `DATABASE_URL` | Sí | Cadena de conexión Postgres (Neon). |
+| `NEXT_PUBLIC_SITE_URL` | No | URL canónica del sitio. |
 
-Copia `.env.example` a `.env.local` si quieres fijarla en desarrollo.
+En Vercel, Neon inyecta `DATABASE_URL` (y variables `POSTGRES_*`) al conectar
+el recurso. El código acepta `DATABASE_URL` o `POSTGRES_URL`.
 
-## Mejoras recomendadas (roadmap)
+## Roadmap
 
-- **Datos por juego exactos**: sustituir los rangos nacionales por listas de
-  Pokémon obtenibles en cada juego, incluyendo métodos (ruta, hierba, agua,
-  intercambio, evento, DLC).
-- **Sincronización de progreso**: cuentas con Auth.js/Clerk + base de datos
-  (Postgres/Neon + Prisma o Drizzle) para conservar checklists entre
-  dispositivos.
-- **Búsqueda global**: índice de búsqueda con Typesense/Meilisearch o full-text
-  en Postgres.
-- **Modelos 3D**: integrar `@react-three/fiber` con modelos GLB optimizados y
-  carga diferida.
-- **PWA**: instalación en móvil, caché offline de guías y checklist sin
-  conexión (next-pwa o Service Worker propio).
-- **Tests**: Vitest + Testing Library para componentes y Playwright para los
-  flujos de checklist/progreso.
-- **Observabilidad**: Vercel Analytics, Speed Insights y Sentry para errores.
-- **Internacionalización**: español/inglés con `next-intl`.
-- **Rate limiting**: protección del API route con Upstash Redis o Vercel KV.
-- **Contenido**: completar guías de spin-offs (Mystery Dungeon, Ranger,
-  Colosseum, XD, Snap, Pokkén...) y añadir mapas/imágenes.
+- Sustituir el respaldo nacional por listas de obtenibilidad exactas con método
+  (ruta, hierba, agua, intercambio, evento, DLC).
+- Traducción completa de nombres de Pokémon al español.
+- Mapas e imágenes en las guías.
+- Cola de sincronización offline con IndexedDB para editar progreso sin
+  conexión.
+- Sentry u otro proveedor de errores además de Analytics.
+- Internacionalización con `next-intl`.
+- Más spin-offs: Pokémon GO, UNITE, Detective Pikachu, Rumble, etc.

@@ -12,8 +12,9 @@ const contentSecurityPolicy = [
   "style-src 'self' 'unsafe-inline'",
   "img-src 'self' data: blob: https:",
   "font-src 'self' data:",
-  `connect-src 'self' https://pokeapi.co${isProduction ? '' : ' ws: wss:'}`,
+  `connect-src 'self' https://pokeapi.co https://raw.githubusercontent.com${isProduction ? '' : ' ws: wss:'}`,
   "manifest-src 'self'",
+  "worker-src 'self' blob:",
   ...(isProduction ? ["upgrade-insecure-requests"] : []),
 ].join('; ');
 

@@ -1,4 +1,11 @@
-import { getIdFromResourceUrl, getArtworkUrl, getSpriteUrl } from '@/services/pokeapi';
+import {
+  getArtworkUrl,
+  getIdFromResourceUrl,
+  getShinyArtworkUrl,
+  getShinySpriteUrl,
+  getSpriteUrl,
+} from '@/services/pokeapi';
+import { getLegendaryCategory } from '@/lib/pokemon';
 import type { PokemonIndexEntry } from '@/types/pokemon';
 
 const POKEAPI_BASE = 'https://pokeapi.co/api/v2';
@@ -41,6 +48,9 @@ export async function getPokemonIndex(): Promise<PokemonIndexEntry[]> {
               name: entry.name,
               spriteUrl: getSpriteUrl(id),
               artworkUrl: getArtworkUrl(id),
+              shinySpriteUrl: getShinySpriteUrl(id),
+              shinyArtworkUrl: getShinyArtworkUrl(id),
+              legendaryCategory: getLegendaryCategory(id),
             };
           })
           .filter((entry): entry is PokemonIndexEntry => entry !== null)

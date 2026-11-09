@@ -2,7 +2,8 @@ import type { Metadata } from 'next';
 import { notFound } from 'next/navigation';
 import GameGuideView from '@/components/GameGuideView';
 import { games, getGameBySlug } from '@/data/games';
-import { getPokemonIndexRange } from '@/services/pokedexIndex';
+import { getVersionGroupInfo } from '@/data/versionGroups';
+import { getGamePokedex } from '@/services/gamePokedex';
 
 export const revalidate = 604800;
 
@@ -24,7 +25,7 @@ export async function generateMetadata({ params }: GuidePageProps): Promise<Meta
 
   return {
     title: `${game.title}: guía completa | Pokédex + Guías`,
-    description: `Guía de ${game.title}: pasos, ${game.challengeLabel.toLowerCase()}, Alto Mando, legendarios, exclusivas y Pokédex ${game.dexRange[0]}-${game.dexRange[1]}.`,
+    description: `Guía de ${game.title}: pasos, ${game.challengeLabel.toLowerCase()}, jefes, legendarios, exclusivas y checklist de completado.`,
   };
 }
 
@@ -34,7 +35,17 @@ export default async function GuidePage({ params }: GuidePageProps) {
 
   if (!game) notFound();
 
-  const pokemon = await getPokemonIndexRange(game.dexRange[0], game.dexRange[1]);
+  const versionGroup = getVersionGroupInfo(game.slug);
+  const hasPokedex = (game.pokedexMode ?? 'regional') !== 'none';
+  const pokemon = hasPokedex
+    ? await getGamePokedex(versionGroup?.versionGroup ?? null, game.dexRange)
+    : [];
 
-  return <GameGuideView game={game} pokemon={pokemon} />;
+  return (
+    <GameGuideView
+      game={game}
+      pokemon={pokemon}
+      pokedexLabel={versionGroup?.pokedexLabel ?? game.dexScope}
+    />
+  );
 }

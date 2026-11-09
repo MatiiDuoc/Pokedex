@@ -1,11 +1,19 @@
 'use client';
 
 import { useEffect, useState } from 'react';
+import Link from 'next/link';
 import { useTeam } from '@/components/TeamProvider';
-import { formatPokemonName, getTypeLabel } from '@/lib/pokemon';
+import { useAccount } from '@/components/AccountProvider';
+import {
+  formatPokemonName,
+  getLegendaryCategory,
+  getLegendaryLabel,
+  getTypeLabel,
+} from '@/lib/pokemon';
 
 export default function PokemonTeam() {
-  const { team, maxSize, remove, clear } = useTeam();
+  const { team, maxSize, remove, clear, requiresLogin, hydrated } = useTeam();
+  const { user, logout, syncError } = useAccount();
   const [isOpen, setIsOpen] = useState(false);
 
   useEffect(() => {
@@ -78,7 +86,49 @@ export default function PokemonTeam() {
           </div>
 
           <div className="flex-1 overflow-y-auto p-4">
-            {team.length === 0 ? (
+            {syncError && (
+              <p className="mb-3 rounded-lg bg-amber-50 px-3 py-2 text-xs font-semibold text-amber-800">
+                {syncError}
+              </p>
+            )}
+
+            {!hydrated && (
+              <p className="mb-3 text-xs font-semibold text-gray-400">
+                Cargando tu equipo...
+              </p>
+            )}
+
+            {requiresLogin ? (
+              <div className="flex h-full items-center justify-center text-center">
+                <div>
+                  <div className="mx-auto mb-4 flex h-24 w-24 items-center justify-center rounded-full bg-blue-50">
+                    <span className="text-4xl" aria-hidden="true">
+                      🔐
+                    </span>
+                  </div>
+                  <p className="text-lg font-semibold text-gray-900">
+                    Inicia sesión para guardar tu equipo
+                  </p>
+                  <p className="mt-1 text-sm text-gray-600">
+                    Cada cuenta tiene su propio equipo y progreso.
+                  </p>
+                  <div className="mt-4 flex flex-col gap-2">
+                    <Link
+                      href="/login?next=/"
+                      className="rounded-lg bg-blue-600 px-4 py-2.5 text-sm font-bold text-white transition hover:bg-blue-700"
+                    >
+                      Iniciar sesión
+                    </Link>
+                    <Link
+                      href="/registro"
+                      className="rounded-lg bg-gray-100 px-4 py-2.5 text-sm font-bold text-gray-800 transition hover:bg-gray-200"
+                    >
+                      Crear cuenta
+                    </Link>
+                  </div>
+                </div>
+              </div>
+            ) : team.length === 0 ? (
               <div className="flex h-full items-center justify-center text-center">
                 <div>
                   <div className="mx-auto mb-4 flex h-24 w-24 items-center justify-center rounded-full bg-gray-100">
@@ -94,7 +144,11 @@ export default function PokemonTeam() {
               </div>
             ) : (
               <div className="space-y-3">
-                {team.map((pokemon) => (
+                {team.map((pokemon) => {
+                  const legendaryLabel = getLegendaryLabel(
+                    getLegendaryCategory(pokemon.id)
+                  );
+                  return (
                   <div
                     key={pokemon.id}
                     className="relative rounded-lg border border-gray-200 bg-white p-4 shadow-sm transition-shadow hover:shadow-md"
@@ -122,6 +176,11 @@ export default function PokemonTeam() {
                           {formatPokemonName(pokemon.name)}
                         </h3>
                         <p className="text-sm text-gray-600">#{pokemon.id}</p>
+                        {legendaryLabel && (
+                          <span className="mt-1 inline-block rounded-full bg-amber-100 px-2 py-0.5 text-[10px] font-bold text-amber-800">
+                            {legendaryLabel}
+                          </span>
+                        )}
                         <div className="mt-1 flex flex-wrap gap-1">
                           {pokemon.types.map((type) => (
                             <span
@@ -135,13 +194,29 @@ export default function PokemonTeam() {
                       </div>
                     </div>
                   </div>
-                ))}
+                  );
+                })}
               </div>
             )}
           </div>
 
-          {team.length > 0 && (
-            <div className="border-t border-gray-200 p-4">
+          <div className="space-y-2 border-t border-gray-200 p-4">
+            {user && (
+              <div className="flex items-center justify-between gap-3 text-xs text-gray-500">
+                <span className="truncate">
+                  Sesión: <strong className="text-gray-700">{user.displayName}</strong>
+                </span>
+                <button
+                  type="button"
+                  onClick={() => void logout()}
+                  className="font-bold text-red-600 hover:text-red-700"
+                >
+                  Cerrar sesión
+                </button>
+              </div>
+            )}
+
+            {team.length > 0 && (
               <button
                 type="button"
                 onClick={clear}
@@ -149,8 +224,17 @@ export default function PokemonTeam() {
               >
                 Limpiar equipo
               </button>
-            </div>
-          )}
+            )}
+
+            {requiresLogin && (
+              <Link
+                href="/login?next=/"
+                className="block w-full rounded-lg bg-blue-600 px-4 py-3 text-center font-semibold text-white transition-colors hover:bg-blue-700"
+              >
+                Iniciar sesión
+              </Link>
+            )}
+          </div>
         </div>
       </div>
 

@@ -1,28 +1,42 @@
 'use client';
 
 import { useEffect, useState } from 'react';
+import { usePathname, useRouter } from 'next/navigation';
 import Modal3D from './Modal3D';
 import { useTeam } from '@/components/TeamProvider';
 import type { PokemonBasic } from '@/types/pokemon';
 import {
   TYPE_COLORS,
   formatPokemonName,
+  getLegendaryLabel,
   getStatLabel,
   getTypeLabel,
 } from '@/lib/pokemon';
 
 interface PokemonCardProps {
   pokemon: PokemonBasic;
+  shiny?: boolean;
 }
 
-export default function PokemonCard({ pokemon }: PokemonCardProps) {
+export default function PokemonCard({ pokemon, shiny = false }: PokemonCardProps) {
   const [showModal, setShowModal] = useState(false);
   const [justAdded, setJustAdded] = useState(false);
-  const { add, has, isFull } = useTeam();
+  const { add, has, isFull, requiresLogin, hydrated } = useTeam();
+  const router = useRouter();
+  const pathname = usePathname();
 
   const isInTeam = has(pokemon.id);
   const mainStats = pokemon.stats.slice(0, 6);
   const totalStats = pokemon.stats.reduce((total, stat) => total + stat.value, 0);
+  const legendaryLabel = getLegendaryLabel(pokemon.legendaryCategory);
+  const artwork =
+    shiny && pokemon.shinyArtworkUrl ? pokemon.shinyArtworkUrl : pokemon.spriteUrl;
+  const legendaryClasses =
+    pokemon.legendaryCategory === 'mythical'
+      ? 'from-fuchsia-500 to-purple-600'
+      : pokemon.legendaryCategory === 'ultra-beast'
+        ? 'from-cyan-500 to-blue-600'
+        : 'from-amber-400 to-orange-500';
 
   useEffect(() => {
     if (!justAdded) return;
@@ -31,17 +45,26 @@ export default function PokemonCard({ pokemon }: PokemonCardProps) {
   }, [justAdded]);
 
   const handleAddToTeam = () => {
+    if (requiresLogin) {
+      router.push(`/login?next=${encodeURIComponent(pathname)}`);
+      return;
+    }
+
     const result = add(pokemon);
     if (result === 'added') setJustAdded(true);
   };
 
-  const buttonLabel = justAdded
-    ? '✓ Agregado'
-    : isInTeam
-      ? '✓ En equipo'
-      : isFull
-        ? 'Equipo lleno'
-        : '⚡ Capturar';
+  const buttonLabel = !hydrated
+    ? 'Cargando...'
+    : requiresLogin
+      ? '🔐 Inicia sesión'
+      : justAdded
+        ? '✓ Agregado'
+        : isInTeam
+          ? '✓ En equipo'
+          : isFull
+            ? 'Equipo lleno'
+            : '⚡ Capturar';
 
   return (
     <>
@@ -66,6 +89,18 @@ export default function PokemonCard({ pokemon }: PokemonCardProps) {
                 <span className="rounded-full bg-gradient-to-r from-purple-500 to-pink-500 px-2 py-0.5 text-xs font-bold text-white shadow-sm">
                   Gen {pokemon.generation}
                 </span>
+                {legendaryLabel && (
+                  <span
+                    className={`rounded-full bg-gradient-to-r ${legendaryClasses} px-2 py-0.5 text-xs font-bold text-white shadow-sm`}
+                  >
+                    {legendaryLabel}
+                  </span>
+                )}
+                {shiny && (
+                  <span className="rounded-full bg-gradient-to-r from-yellow-300 to-amber-400 px-2 py-0.5 text-xs font-bold text-amber-950 shadow-sm">
+                    ✨ Shiny
+                  </span>
+                )}
               </div>
             </div>
             <div className="flex flex-col items-end gap-1">
@@ -87,9 +122,14 @@ export default function PokemonCard({ pokemon }: PokemonCardProps) {
               <div className="absolute inset-0 rounded-full bg-gradient-to-br from-blue-100 to-purple-100 opacity-50 blur-2xl" />
               {/* eslint-disable-next-line @next/next/no-img-element */}
               <img
-                src={pokemon.spriteUrl}
-                alt={formatPokemonName(pokemon.name)}
+                src={artwork}
+                alt={`${formatPokemonName(pokemon.name)}${shiny ? ' shiny' : ''}`}
                 loading="lazy"
+                onError={(event) => {
+                  const image = event.currentTarget;
+                  image.onerror = null;
+                  image.src = pokemon.spriteUrl;
+                }}
                 className="relative h-48 w-48 object-contain drop-shadow-2xl transition-transform group-hover:scale-110"
               />
             </div>
@@ -155,13 +195,17 @@ export default function PokemonCard({ pokemon }: PokemonCardProps) {
             <button
               type="button"
               onClick={handleAddToTeam}
-              disabled={isInTeam || isFull}
+              disabled={!hydrated || isInTeam || isFull}
               className={`flex-1 rounded-lg px-4 py-3 text-sm font-bold text-white shadow-md transition-all hover:shadow-lg focus:outline-none focus-visible:ring-2 focus-visible:ring-red-300 disabled:cursor-not-allowed ${
-                justAdded || isInTeam
-                  ? 'bg-green-500'
-                  : isFull
-                    ? 'bg-gray-400'
-                    : 'bg-gradient-to-r from-red-500 to-red-600 hover:from-red-600 hover:to-red-700'
+                !hydrated
+                  ? 'bg-gray-300'
+                  : requiresLogin
+                    ? 'bg-gradient-to-r from-blue-500 to-blue-600 hover:from-blue-600 hover:to-blue-700'
+                    : justAdded || isInTeam
+                    ? 'bg-green-500'
+                    : isFull
+                      ? 'bg-gray-400'
+                      : 'bg-gradient-to-r from-red-500 to-red-600 hover:from-red-600 hover:to-red-700'
               }`}
             >
               {buttonLabel}

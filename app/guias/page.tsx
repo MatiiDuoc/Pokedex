@@ -5,7 +5,7 @@ import { games } from '@/data/games';
 export const metadata: Metadata = {
   title: 'Guías de todos los juegos Pokémon | Pokédex + Guías',
   description:
-    'Guías paso a paso, gimnasios, Alto Mando, legendarios y Pokédex de todos los juegos principales de Pokémon.',
+    'Guías paso a paso, gimnasios, jefes, legendarios y Pokédex de todos los juegos principales y spin-offs de Pokémon.',
 };
 
 export default function GuidesPage() {

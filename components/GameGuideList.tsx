@@ -2,17 +2,21 @@
 
 import Link from 'next/link';
 import { useDeferredValue, useMemo, useState } from 'react';
+import { getVersionGroupInfo } from '@/data/versionGroups';
 import type { GameGuide } from '@/types/game';
 
 interface GameGuideListProps {
   games: GameGuide[];
 }
 
+type CategoryFilter = 'all' | 'main' | 'spin-off';
+
 export default function GameGuideList({ games }: GameGuideListProps) {
   const [query, setQuery] = useState('');
   const [generation, setGeneration] = useState('');
   const [region, setRegion] = useState('');
   const [platform, setPlatform] = useState('');
+  const [category, setCategory] = useState<CategoryFilter>('all');
 
   const deferredQuery = useDeferredValue(query.trim().toLowerCase());
 
@@ -42,11 +46,19 @@ export default function GameGuideList({ games }: GameGuideListProps) {
           generation === '' || game.generation === Number(generation);
         const matchesRegion = region === '' || game.region === region;
         const matchesPlatform = platform === '' || game.platform === platform;
+        const matchesCategory =
+          category === 'all' || (game.category ?? 'main') === category;
 
-        return matchesQuery && matchesGeneration && matchesRegion && matchesPlatform;
+        return (
+          matchesQuery &&
+          matchesGeneration &&
+          matchesRegion &&
+          matchesPlatform &&
+          matchesCategory
+        );
       })
       .sort((a, b) => a.releaseYear - b.releaseYear);
-  }, [games, deferredQuery, generation, region, platform]);
+  }, [games, deferredQuery, generation, region, platform, category]);
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-slate-50 via-white to-red-50 px-4 py-10">
@@ -60,14 +72,15 @@ export default function GameGuideList({ games }: GameGuideListProps) {
           </h1>
           <p className="mx-auto mt-3 max-w-3xl text-gray-600">
             Guías paso a paso para completar la historia, vencer gimnasios y ligas,
-            capturar legendarios y llenar la Pokédex de cada juego principal.
+            capturar legendarios y llenar la Pokédex. Incluye juegos principales,
+            remakes, DLC y spin-offs.
           </p>
           <p className="mt-2 text-sm text-gray-500">
-            {games.length} guías · Generaciones I-IX · Incluye remakes y DLC
+            {games.length} guías · Generaciones I-IX · Principales y spin-offs
           </p>
         </div>
 
-        <div className="mb-6 grid gap-4 md:grid-cols-2 lg:grid-cols-4">
+        <div className="mb-6 grid gap-4 md:grid-cols-2 lg:grid-cols-6">
           <div className="lg:col-span-2">
             <label htmlFor="guide-search" className="sr-only">
               Buscar guía
@@ -135,6 +148,21 @@ export default function GameGuideList({ games }: GameGuideListProps) {
               ))}
             </select>
           </div>
+          <div>
+            <label htmlFor="guide-category" className="sr-only">
+              Filtrar por tipo de juego
+            </label>
+            <select
+              id="guide-category"
+              value={category}
+              onChange={(event) => setCategory(event.target.value as CategoryFilter)}
+              className="w-full rounded-lg border border-gray-300 bg-white px-4 py-3 text-gray-900 focus:border-red-500 focus:outline-none focus:ring-2 focus:ring-red-200"
+            >
+              <option value="all">Principales y spin-offs</option>
+              <option value="main">Solo principales</option>
+              <option value="spin-off">Solo spin-offs</option>
+            </select>
+          </div>
         </div>
 
         <div className="mb-4 flex items-center justify-between text-sm text-gray-600">
@@ -142,7 +170,7 @@ export default function GameGuideList({ games }: GameGuideListProps) {
             {filtered.length} guía{filtered.length === 1 ? '' : 's'} encontrada
             {filtered.length === 1 ? '' : 's'}
           </span>
-          {(query || generation || region || platform) && (
+          {(query || generation || region || platform || category !== 'all') && (
             <button
               type="button"
               onClick={() => {
@@ -150,6 +178,7 @@ export default function GameGuideList({ games }: GameGuideListProps) {
                 setGeneration('');
                 setRegion('');
                 setPlatform('');
+                setCategory('all');
               }}
               className="font-semibold text-red-600 hover:text-red-700"
             >
@@ -183,6 +212,11 @@ export default function GameGuideList({ games }: GameGuideListProps) {
                       {game.releaseYear}
                     </span>
                   </div>
+                  {game.category === 'spin-off' && (
+                    <span className="mb-2 inline-block rounded-full bg-purple-50 px-2.5 py-1 text-xs font-bold text-purple-700">
+                      Spin-off
+                    </span>
+                  )}
 
                   <h2 className="text-xl font-black text-gray-900 group-hover:text-red-600">
                     {game.title}
@@ -193,7 +227,10 @@ export default function GameGuideList({ games }: GameGuideListProps) {
                     <div className="rounded-lg bg-gray-50 p-2">
                       <dt className="text-xs font-semibold text-gray-500">Pokédex</dt>
                       <dd className="font-bold text-gray-900">
-                        {game.dexRange[0]}-{game.dexRange[1]}
+                        {game.pokedexMode === 'none'
+                          ? 'Sin Pokédex'
+                          : getVersionGroupInfo(game.slug)?.pokedexLabel ??
+                            `${game.dexRange[0]}-${game.dexRange[1]}`}
                       </dd>
                     </div>
                     <div className="rounded-lg bg-gray-50 p-2">

@@ -1,4 +1,5 @@
 import type { GameGuide, GameGym } from '@/types/game';
+import { spinOffs } from '@/data/spinOffs';
 
 const gym = (
   leader: string,
@@ -8,7 +9,7 @@ const gym = (
   tip: string
 ): GameGym => ({ leader, type, badge, location, tip });
 
-export const games: GameGuide[] = [
+const mainGames: GameGuide[] = [
   {
     slug: 'red-blue-green',
     title: 'Pokémon Rojo, Azul y Verde',
@@ -2223,6 +2224,8 @@ export const games: GameGuide[] = [
     accent: 'from-fuchsia-600 to-cyan-500',
   },
 ];
+
+export const games = [...mainGames, ...spinOffs];
 
 export const gamesBySlug = new Map(games.map((game) => [game.slug, game]));
 

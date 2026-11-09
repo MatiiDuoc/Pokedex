@@ -1,3 +1,5 @@
+export type LegendaryCategory = 'legendary' | 'mythical' | 'ultra-beast' | 'none';
+
 export interface PokemonStat {
   name: string;
   value: number;
@@ -12,8 +14,11 @@ export interface PokemonBasic {
   types: string[];
   stats: PokemonStat[];
   spriteUrl: string;
+  shinySpriteUrl: string;
+  shinyArtworkUrl: string;
   model3dUrl: string;
   generation: number;
+  legendaryCategory: LegendaryCategory;
 }
 
 export interface PaginatedResponse {
@@ -31,4 +36,7 @@ export interface PokemonIndexEntry {
   name: string;
   spriteUrl: string;
   artworkUrl: string;
+  shinySpriteUrl: string;
+  shinyArtworkUrl: string;
+  legendaryCategory: LegendaryCategory;
 }

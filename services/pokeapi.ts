@@ -3,7 +3,7 @@ import type {
   PokemonBasic,
   PokemonStat,
 } from '@/types/pokemon';
-import { getGenerationFromId } from '@/lib/pokemon';
+import { getGenerationFromId, getLegendaryCategory } from '@/lib/pokemon';
 
 const POKEAPI_BASE = 'https://pokeapi.co/api/v2';
 const REVALIDATE_SECONDS = 60 * 60 * 24; // 24 horas
@@ -56,6 +56,14 @@ export function getSpriteUrl(id: number): string {
   return `https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/pokemon/${id}.png`;
 }
 
+export function getShinyArtworkUrl(id: number): string {
+  return `https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/pokemon/other/official-artwork/shiny/${id}.png`;
+}
+
+export function getShinySpriteUrl(id: number): string {
+  return `https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/pokemon/shiny/${id}.png`;
+}
+
 export function getIdFromResourceUrl(url: string): number | null {
   const match = url.match(/\/(\d+)\/?$/);
   if (!match) return null;
@@ -96,9 +104,12 @@ async function getPokemonDetail(resource: PokeApiNamedResource): Promise<Pokemon
         .map((entry) => entry.type.name),
       stats,
       spriteUrl,
-      // Los modelos 3D no se usan todavía en la interfaz.
+      shinySpriteUrl: getShinySpriteUrl(id),
+      shinyArtworkUrl: getShinyArtworkUrl(id),
+      // La URL del modelo 3D se resuelve desde el visor.
       model3dUrl: '',
       generation: getGenerationFromId(id),
+      legendaryCategory: getLegendaryCategory(id),
     };
   } catch (error) {
     console.error(`No se pudo cargar ${resource.name}:`, error);

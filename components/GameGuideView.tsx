@@ -3,6 +3,7 @@
 import Link from 'next/link';
 import { useState } from 'react';
 import PokedexChecklist from './PokedexChecklist';
+import { useAccount } from '@/components/AccountProvider';
 import { useGameProgress } from '@/lib/progress';
 import { getTypeColorByLabel } from '@/lib/pokemon';
 import type { GameGuide } from '@/types/game';
@@ -11,21 +12,32 @@ import type { PokemonIndexEntry } from '@/types/pokemon';
 interface GameGuideViewProps {
   game: GameGuide;
   pokemon: PokemonIndexEntry[];
+  pokedexLabel: string;
 }
 
 type TabId = 'resumen' | 'pasos' | 'desafios' | 'pokedex' | 'consejos';
 
-export default function GameGuideView({ game, pokemon }: GameGuideViewProps) {
+export default function GameGuideView({
+  game,
+  pokemon,
+  pokedexLabel,
+}: GameGuideViewProps) {
   const [activeTab, setActiveTab] = useState<TabId>('resumen');
+  const { syncError } = useAccount();
   const {
     progress,
     loaded,
+    requiresLogin,
     toggleCaught,
     setCaught,
     toggleChecklist,
     reset,
     isChecked,
   } = useGameProgress(game.slug);
+
+  const hasPokedex = (game.pokedexMode ?? 'regional') !== 'none';
+  const loginHref = `/login?next=${encodeURIComponent(`/guias/${game.slug}`)}`;
+  const progressReadOnly = requiresLogin || !loaded;
 
   const checklistDone = game.completionChecklist.filter((item) =>
     progress.checklist.includes(item)
@@ -44,7 +56,9 @@ export default function GameGuideView({ game, pokemon }: GameGuideViewProps) {
     { id: 'resumen', label: 'Resumen' },
     { id: 'pasos', label: 'Paso a paso' },
     { id: 'desafios', label: game.challengeLabel },
-    { id: 'pokedex', label: 'Pokédex' },
+    ...(hasPokedex
+      ? [{ id: 'pokedex' as const, label: 'Pokédex' }]
+      : []),
     { id: 'consejos', label: 'Consejos' },
   ];
 
@@ -71,6 +85,9 @@ export default function GameGuideView({ game, pokemon }: GameGuideViewProps) {
               Generación {game.generation}
             </span>
             <span className="rounded-full bg-white/20 px-2.5 py-1">{game.region}</span>
+            {game.category === 'spin-off' && (
+              <span className="rounded-full bg-white/20 px-2.5 py-1">Spin-off</span>
+            )}
             <span className="rounded-full bg-white/20 px-2.5 py-1">{game.platform}</span>
             <span className="rounded-full bg-white/20 px-2.5 py-1">{game.releaseYear}</span>
           </div>
@@ -79,9 +96,12 @@ export default function GameGuideView({ game, pokemon }: GameGuideViewProps) {
             {game.title}
           </h1>
           <p className="mt-2 max-w-3xl text-sm text-white/90 sm:text-base">
-            {game.dexScope}. Esta guía reúne la ruta principal, los desafíos,
-            los legendarios, las exclusivas de versión y una checklist completa
-            para que no te dejes nada.
+            {hasPokedex
+              ? `${pokedexLabel}: ${pokemon.length} especies. `
+              : 'Guía de spin-off centrada en la historia, los jefes y los objetivos de completado. '}
+            Esta guía reúne la ruta principal, los desafíos, los legendarios,
+            las exclusivas de versión y una checklist completa para que no te
+            dejes nada.
           </p>
 
           <div className="mt-5 flex flex-wrap gap-2">
@@ -95,6 +115,36 @@ export default function GameGuideView({ game, pokemon }: GameGuideViewProps) {
             ))}
           </div>
         </header>
+
+        {syncError && (
+          <p
+            role="status"
+            className="mt-4 rounded-xl border border-amber-200 bg-amber-50 px-4 py-3 text-sm font-semibold text-amber-800"
+          >
+            {syncError}
+          </p>
+        )}
+
+        {requiresLogin && (
+          <div className="mt-4 flex flex-wrap items-center justify-between gap-3 rounded-xl border border-blue-200 bg-blue-50 px-4 py-3">
+            <p className="text-sm font-semibold text-blue-900">
+              Inicia sesión para marcar tu progreso. Las guías se pueden leer sin
+              cuenta, pero las marcas se guardan por usuario.
+            </p>
+            <Link
+              href={loginHref}
+              className="rounded-lg bg-blue-600 px-4 py-2 text-sm font-bold text-white transition hover:bg-blue-700"
+            >
+              Iniciar sesión
+            </Link>
+          </div>
+        )}
+
+        {!loaded && !requiresLogin && (
+          <p className="mt-4 rounded-xl border border-gray-200 bg-white px-4 py-3 text-sm font-semibold text-gray-500">
+            Cargando tu progreso...
+          </p>
+        )}
 
         <section className="mt-5 grid gap-3 sm:grid-cols-3">
           <div className="rounded-2xl bg-white p-4 shadow-sm">
@@ -127,12 +177,18 @@ export default function GameGuideView({ game, pokemon }: GameGuideViewProps) {
 
           <div className="rounded-2xl bg-white p-4 shadow-sm">
             <p className="text-xs font-bold uppercase tracking-wide text-gray-500">
-              Pokédex
+              {hasPokedex ? 'Pokédex' : 'Pasos'}
             </p>
             <p className="mt-1 text-3xl font-black text-gray-900">
-              {loaded ? `${dexDone}/${pokemon.length}` : '—'}
+              {loaded
+                ? hasPokedex
+                  ? `${dexDone}/${pokemon.length}`
+                  : `${stepsDone}/${game.walkthrough.length}`
+                : '—'}
             </p>
-            <p className="mt-2 text-xs text-gray-500">Especies marcadas</p>
+            <p className="mt-2 text-xs text-gray-500">
+              {hasPokedex ? 'Especies marcadas' : 'Pasos completados'}
+            </p>
           </div>
         </section>
 
@@ -184,8 +240,14 @@ export default function GameGuideView({ game, pokemon }: GameGuideViewProps) {
                 <InfoCard label="Plataforma" value={game.platform} />
                 <InfoCard label="Lanzamiento" value={String(game.releaseYear)} />
                 <InfoCard
-                  label="Pokédex"
-                  value={`${game.dexRange[0]}-${game.dexRange[1]}`}
+                  label={hasPokedex ? 'Pokédex' : 'Categoría'}
+                  value={
+                    hasPokedex
+                      ? `${pokemon.length} especies`
+                      : game.category === 'spin-off'
+                        ? 'Spin-off'
+                        : 'No aplica'
+                  }
                 />
               </div>
 
@@ -204,47 +266,51 @@ export default function GameGuideView({ game, pokemon }: GameGuideViewProps) {
                   </div>
                 </div>
 
+                {[...game.boxLegendaries, ...game.mythicals].length > 0 && (
+                  <div className="rounded-2xl bg-white p-5 shadow-sm">
+                    <h2 className="text-lg font-bold text-gray-900">
+                      Legendarios y míticos
+                    </h2>
+                    <div className="mt-3 flex flex-wrap gap-2">
+                      {[...game.boxLegendaries, ...game.mythicals].map((legendary) => (
+                        <span
+                          key={legendary}
+                          className="rounded-full bg-purple-50 px-3 py-1.5 text-sm font-semibold text-purple-800"
+                        >
+                          {legendary}
+                        </span>
+                      ))}
+                    </div>
+                  </div>
+                )}
+              </div>
+
+              {game.versionExclusives.length > 0 && (
                 <div className="rounded-2xl bg-white p-5 shadow-sm">
                   <h2 className="text-lg font-bold text-gray-900">
-                    Legendarios y míticos
+                    Exclusivas de versión
                   </h2>
-                  <div className="mt-3 flex flex-wrap gap-2">
-                    {[...game.boxLegendaries, ...game.mythicals].map((legendary) => (
-                      <span
-                        key={legendary}
-                        className="rounded-full bg-purple-50 px-3 py-1.5 text-sm font-semibold text-purple-800"
-                      >
-                        {legendary}
-                      </span>
+                  <div className="mt-4 grid gap-4 md:grid-cols-2">
+                    {game.versionExclusives.map((group) => (
+                      <div key={group.version} className="rounded-xl bg-gray-50 p-4">
+                        <h3 className="text-sm font-black uppercase tracking-wide text-red-600">
+                          {group.version}
+                        </h3>
+                        <div className="mt-2 flex flex-wrap gap-1.5">
+                          {group.pokemon.map((entry) => (
+                            <span
+                              key={`${group.version}-${entry}`}
+                              className="rounded-full bg-white px-2.5 py-1 text-xs font-semibold text-gray-700 shadow-sm"
+                            >
+                              {entry}
+                            </span>
+                          ))}
+                        </div>
+                      </div>
                     ))}
                   </div>
                 </div>
-              </div>
-
-              <div className="rounded-2xl bg-white p-5 shadow-sm">
-                <h2 className="text-lg font-bold text-gray-900">
-                  Exclusivas de versión
-                </h2>
-                <div className="mt-4 grid gap-4 md:grid-cols-2">
-                  {game.versionExclusives.map((group) => (
-                    <div key={group.version} className="rounded-xl bg-gray-50 p-4">
-                      <h3 className="text-sm font-black uppercase tracking-wide text-red-600">
-                        {group.version}
-                      </h3>
-                      <div className="mt-2 flex flex-wrap gap-1.5">
-                        {group.pokemon.map((entry) => (
-                          <span
-                            key={`${group.version}-${entry}`}
-                            className="rounded-full bg-white px-2.5 py-1 text-xs font-semibold text-gray-700 shadow-sm"
-                          >
-                            {entry}
-                          </span>
-                        ))}
-                      </div>
-                    </div>
-                  ))}
-                </div>
-              </div>
+              )}
 
               <div className="rounded-2xl bg-white p-5 shadow-sm">
                 <div className="flex items-center justify-between gap-3">
@@ -264,7 +330,8 @@ export default function GameGuideView({ game, pokemon }: GameGuideViewProps) {
                           type="button"
                           onClick={() => toggleChecklist(item)}
                           aria-pressed={checked}
-                          className={`flex w-full items-center gap-3 rounded-xl border p-3 text-left transition focus:outline-none focus-visible:ring-2 focus-visible:ring-red-300 ${
+                          disabled={progressReadOnly}
+                          className={`flex w-full items-center gap-3 rounded-xl border p-3 text-left transition focus:outline-none focus-visible:ring-2 focus-visible:ring-red-300 disabled:cursor-not-allowed disabled:opacity-70 ${
                             checked
                               ? 'border-green-200 bg-green-50'
                               : 'border-gray-200 bg-white hover:border-red-200'
@@ -341,7 +408,8 @@ export default function GameGuideView({ game, pokemon }: GameGuideViewProps) {
                               type="button"
                               onClick={() => toggleChecklist(key)}
                               aria-pressed={checked}
-                              className={`rounded-lg px-3 py-1.5 text-xs font-bold transition focus:outline-none focus-visible:ring-2 focus-visible:ring-red-300 ${
+                              disabled={progressReadOnly}
+                              className={`rounded-lg px-3 py-1.5 text-xs font-bold transition focus:outline-none focus-visible:ring-2 focus-visible:ring-red-300 disabled:cursor-not-allowed disabled:opacity-60 ${
                                 checked
                                   ? 'bg-green-100 text-green-800'
                                   : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
@@ -471,19 +539,42 @@ export default function GameGuideView({ game, pokemon }: GameGuideViewProps) {
             >
               <div className="mb-4 rounded-2xl bg-white p-5 shadow-sm">
                 <h2 className="text-xl font-black text-gray-900">
-                  Pokédex de {game.region}
+                  {pokedexLabel}
                 </h2>
-                <p className="mt-1 text-sm text-gray-600">{game.dexScope}</p>
+                <p className="mt-1 text-sm text-gray-600">
+                  {pokemon.length} especies del Pokédex regional oficial, incluyendo
+                  DLC cuando corresponde.
+                </p>
                 <p className="mt-2 text-sm text-amber-800">{game.dexNote}</p>
               </div>
 
-              <PokedexChecklist
-                pokemon={pokemon}
-                caught={progress.caught}
-                loaded={loaded}
-                onToggle={toggleCaught}
-                onSetMany={setCaught}
-              />
+              {!loaded && !requiresLogin ? (
+                <div className="rounded-2xl bg-white p-6 text-center shadow-sm">
+                  <div className="mx-auto h-8 w-8 animate-spin rounded-full border-4 border-red-200 border-t-red-600" />
+                  <p className="mt-3 text-sm font-semibold text-gray-500">
+                    Cargando tu Pokédex...
+                  </p>
+                </div>
+              ) : pokemon.length === 0 ? (
+                <div className="rounded-2xl border border-amber-200 bg-amber-50 p-6 text-center">
+                  <p className="font-bold text-amber-900">
+                    No se pudo cargar la Pokédex de este juego.
+                  </p>
+                  <p className="mt-1 text-sm text-amber-800">
+                    PokeAPI no respondió. Recarga la página en unos minutos; el
+                    resto de la guía sigue disponible.
+                  </p>
+                </div>
+              ) : (
+                <PokedexChecklist
+                  pokemon={pokemon}
+                  caught={progress.caught}
+                  loaded={loaded}
+                  readOnly={progressReadOnly}
+                  onToggle={toggleCaught}
+                  onSetMany={setCaught}
+                />
+              )}
             </section>
           )}
 

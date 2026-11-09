@@ -6,6 +6,7 @@ import SearchBar from './SearchBar';
 import PokemonCard from './PokemonCard';
 import Pagination from './Pagination';
 import type { PokemonBasic } from '@/types/pokemon';
+import type { LegendaryCategory } from '@/lib/pokemon';
 
 interface PokemonListProps {
   pokemonData: PokemonBasic[];
@@ -23,6 +24,8 @@ export default function PokemonList({
   const [searchTerm, setSearchTerm] = useState('');
   const [selectedType, setSelectedType] = useState('');
   const [selectedGeneration, setSelectedGeneration] = useState('');
+  const [legendaryFilter, setLegendaryFilter] = useState<LegendaryCategory | ''>('');
+  const [shiny, setShiny] = useState(false);
   const [currentPage, setCurrentPage] = useState(1);
 
   const deferredSearchTerm = useDeferredValue(searchTerm);
@@ -50,10 +53,18 @@ export default function PokemonList({
       const matchesType = selectedType === '' || pokemon.types.includes(selectedType);
       const matchesGeneration =
         selectedGeneration === '' || pokemon.generation === Number(selectedGeneration);
+      const matchesLegendary =
+        legendaryFilter === '' || pokemon.legendaryCategory === legendaryFilter;
 
-      return matchesName && matchesType && matchesGeneration;
+      return matchesName && matchesType && matchesGeneration && matchesLegendary;
     });
-  }, [pokemonData, deferredSearchTerm, selectedType, selectedGeneration]);
+  }, [
+    pokemonData,
+    deferredSearchTerm,
+    selectedType,
+    selectedGeneration,
+    legendaryFilter,
+  ]);
 
   const paginatedPokemon = useMemo(() => {
     const startIndex = (currentPage - 1) * ITEMS_PER_PAGE;
@@ -67,10 +78,16 @@ export default function PokemonList({
     window.scrollTo({ top: 0, behavior: 'smooth' });
   };
 
-  const handleSearch = (term: string, type: string, generation: string) => {
+  const handleSearch = (
+    term: string,
+    type: string,
+    generation: string,
+    legendary: LegendaryCategory | ''
+  ) => {
     setSearchTerm(term);
     setSelectedType(type);
     setSelectedGeneration(generation);
+    setLegendaryFilter(legendary);
     setCurrentPage(1);
   };
 
@@ -111,15 +128,45 @@ export default function PokemonList({
           generations={availableGenerations}
         />
 
-        <div className="mb-4 text-sm text-gray-600" aria-live="polite">
-          {filteredPokemon.length} resultado{filteredPokemon.length === 1 ? '' : 's'}
+        <div className="mb-4 flex flex-wrap items-center justify-between gap-3">
+          <div className="text-sm text-gray-600" aria-live="polite">
+            {filteredPokemon.length} resultado{filteredPokemon.length === 1 ? '' : 's'}
+            {loadedCount < totalPokemon && (
+              <span className="ml-2 text-xs text-gray-400">
+                (vista rápida de {loadedCount} de {totalPokemon})
+              </span>
+            )}
+          </div>
+          <button
+            type="button"
+            onClick={() => setShiny((value) => !value)}
+            aria-pressed={shiny}
+            className={`rounded-full px-4 py-2 text-sm font-bold transition ${
+              shiny
+                ? 'bg-gradient-to-r from-yellow-300 to-amber-400 text-amber-950 shadow-md'
+                : 'bg-white text-gray-700 shadow-sm hover:bg-gray-50'
+            }`}
+          >
+            ✨ {shiny ? 'Modo shiny activo' : 'Ver shinies'}
+          </button>
         </div>
+
+        {loadedCount < totalPokemon && (
+          <p className="mb-4 rounded-xl border border-blue-200 bg-blue-50 px-4 py-3 text-sm text-blue-900">
+            Para ver todos los legendarios, míticos, ultraentes y shinies de las 9
+            generaciones, usa la{' '}
+            <Link href="/pokedex" className="font-bold underline">
+              Pokédex completa
+            </Link>
+            .
+          </p>
+        )}
 
         {paginatedPokemon.length > 0 ? (
           <>
             <section className="grid grid-cols-1 gap-6 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4">
               {paginatedPokemon.map((pokemon) => (
-                <PokemonCard key={pokemon.id} pokemon={pokemon} />
+                <PokemonCard key={pokemon.id} pokemon={pokemon} shiny={shiny} />
               ))}
             </section>
 

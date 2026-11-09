@@ -7,7 +7,7 @@ export const revalidate = 604800;
 export const metadata: Metadata = {
   title: 'Pokédex completa | Pokédex + Guías',
   description:
-    'Consulta las 1025 especies del Pokédex Nacional con búsqueda por nombre, número y generación.',
+    'Consulta las 1025 especies del Pokédex Nacional, incluyendo legendarios, míticos, ultraentes y todos los shinies de las 9 generaciones.',
 };
 
 export default async function PokedexPage() {

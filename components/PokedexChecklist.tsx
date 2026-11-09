@@ -6,6 +6,7 @@ import {
   formatDexNumber,
   formatPokemonName,
   getGenerationFromId,
+  getLegendaryLabel,
 } from '@/lib/pokemon';
 import type { PokemonIndexEntry } from '@/types/pokemon';
 
@@ -13,6 +14,7 @@ interface PokedexChecklistProps {
   pokemon: PokemonIndexEntry[];
   caught: number[];
   loaded: boolean;
+  readOnly?: boolean;
   onToggle: (id: number) => void;
   onSetMany: (ids: number[], value: boolean) => void;
 }
@@ -24,11 +26,13 @@ export default function PokedexChecklist({
   pokemon,
   caught,
   loaded,
+  readOnly = false,
   onToggle,
   onSetMany,
 }: PokedexChecklistProps) {
   const [query, setQuery] = useState('');
   const [status, setStatus] = useState<StatusFilter>('all');
+  const [shiny, setShiny] = useState(false);
   const [page, setPage] = useState(1);
 
   const deferredQuery = useDeferredValue(query.trim().toLowerCase());
@@ -81,6 +85,13 @@ export default function PokedexChecklist({
         </div>
       </div>
 
+      {readOnly && (
+        <p className="mt-3 rounded-xl border border-blue-200 bg-blue-50 px-3 py-2 text-sm font-semibold text-blue-900">
+          Inicia sesión para marcar Pokémon. La lista es de solo lectura para
+          invitados, así nadie modifica el progreso de otra persona.
+        </p>
+      )}
+
       <div className="mt-4 grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
         <div>
           <label htmlFor="dex-search" className="sr-only">
@@ -120,7 +131,7 @@ export default function PokedexChecklist({
           <button
             type="button"
             onClick={() => onSetMany(visibleIds, true)}
-            disabled={visibleIds.length === 0}
+            disabled={readOnly || visibleIds.length === 0}
             className="flex-1 rounded-lg bg-green-600 px-3 py-2.5 text-sm font-bold text-white transition hover:bg-green-700 disabled:cursor-not-allowed disabled:bg-gray-300"
           >
             Marcar página
@@ -128,7 +139,7 @@ export default function PokedexChecklist({
           <button
             type="button"
             onClick={() => onSetMany(visibleIds, false)}
-            disabled={visibleIds.length === 0}
+            disabled={readOnly || visibleIds.length === 0}
             className="flex-1 rounded-lg bg-gray-100 px-3 py-2.5 text-sm font-bold text-gray-800 transition hover:bg-gray-200 disabled:cursor-not-allowed disabled:text-gray-400"
           >
             Desmarcar
@@ -136,24 +147,40 @@ export default function PokedexChecklist({
         </div>
       </div>
 
-      <p className="mt-3 text-sm text-gray-600" aria-live="polite">
-        {filtered.length} Pokémon en la lista
-      </p>
+      <div className="mt-3 flex flex-wrap items-center justify-between gap-3">
+        <p className="text-sm text-gray-600" aria-live="polite">
+          {filtered.length} Pokémon en la lista
+        </p>
+        <button
+          type="button"
+          onClick={() => setShiny((value) => !value)}
+          aria-pressed={shiny}
+          className={`rounded-full px-4 py-2 text-sm font-bold transition ${
+            shiny
+              ? 'bg-gradient-to-r from-yellow-300 to-amber-400 text-amber-950 shadow-md'
+              : 'bg-white text-gray-700 shadow-sm hover:bg-gray-50'
+          }`}
+        >
+          ✨ {shiny ? 'Modo shiny activo' : 'Ver shinies'}
+        </button>
+      </div>
 
       <div className="mt-3 grid grid-cols-2 gap-3 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-6">
         {visible.map((entry) => {
           const isCaught = caughtSet.has(entry.id);
+          const legendaryLabel = getLegendaryLabel(entry.legendaryCategory);
           return (
             <button
               key={entry.id}
               type="button"
               onClick={() => onToggle(entry.id)}
               aria-pressed={isCaught}
-              className={`relative rounded-xl border p-2 text-center transition focus:outline-none focus-visible:ring-2 focus-visible:ring-red-300 ${
+              disabled={readOnly}
+              className={`relative rounded-xl border p-2 text-center transition focus:outline-none focus-visible:ring-2 focus-visible:ring-red-300 disabled:cursor-not-allowed ${
                 isCaught
                   ? 'border-green-300 bg-green-50 shadow-sm'
                   : 'border-gray-200 bg-white hover:border-red-200 hover:shadow-sm'
-              }`}
+              } ${readOnly ? 'opacity-80' : ''}`}
             >
               <span
                 className={`absolute right-2 top-2 flex h-5 w-5 items-center justify-center rounded-full text-[11px] font-bold ${
@@ -165,9 +192,14 @@ export default function PokedexChecklist({
               </span>
               {/* eslint-disable-next-line @next/next/no-img-element */}
               <img
-                src={entry.artworkUrl}
-                alt={formatPokemonName(entry.name)}
+                src={shiny ? entry.shinyArtworkUrl : entry.artworkUrl}
+                alt={`${formatPokemonName(entry.name)}${shiny ? ' shiny' : ''}`}
                 loading="lazy"
+                onError={(event) => {
+                  const image = event.currentTarget;
+                  image.onerror = null;
+                  image.src = entry.artworkUrl;
+                }}
                 className="mx-auto h-20 w-20 object-contain"
               />
               <span className="mt-1 block text-[11px] font-semibold text-gray-500">
@@ -178,6 +210,26 @@ export default function PokedexChecklist({
               </span>
               <span className="mt-0.5 block text-[10px] font-semibold text-gray-400">
                 Gen {getGenerationFromId(entry.id)}
+              </span>
+              <span className="mt-1 flex flex-wrap justify-center gap-1">
+                {legendaryLabel && (
+                  <span
+                    className={`rounded-full px-1.5 py-0.5 text-[9px] font-bold text-white ${
+                      entry.legendaryCategory === 'mythical'
+                        ? 'bg-fuchsia-600'
+                        : entry.legendaryCategory === 'ultra-beast'
+                          ? 'bg-cyan-600'
+                          : 'bg-amber-500'
+                    }`}
+                  >
+                    {legendaryLabel}
+                  </span>
+                )}
+                {shiny && (
+                  <span className="rounded-full bg-amber-100 px-1.5 py-0.5 text-[9px] font-bold text-amber-800">
+                    ✨
+                  </span>
+                )}
               </span>
             </button>
           );

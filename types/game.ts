@@ -31,6 +31,10 @@ export interface GameGuide {
   slug: string;
   title: string;
   shortTitle: string;
+  /** Juego principal o spin-off. */
+  category?: 'main' | 'spin-off';
+  /** 'regional' usa el Pokédex del juego; 'none' oculta la checklist. */
+  pokedexMode?: 'regional' | 'none';
   generation: number;
   region: string;
   platform: string;
