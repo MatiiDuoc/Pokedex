@@ -31,13 +31,19 @@ checklists por juego, guías paso a paso y visor 3D.
   huevo.
 - **Guías visuales** con mapas SVG ilustrativos de cada región, pines de ruta,
   insignias y un Pokémon representativo del tipo de cada gimnasio.
-- **Mapa interactivo 2D/3D** en cada guía: arrastrar, zoom, pantalla completa,
-  marcadores clicables, última parada y siguiente objetivo destacados, ficha del
-  gimnasio y acción para marcar la insignia o saltar al combate. Incluye una
-  vista **diorama 3D** con relieve, profundidad, sombra sobre el océano y
-  niveles diferenciados de **superficie, cuevas/relieves y rutas acuáticas**.
-- **Mapa del siguiente objetivo**: indica la última insignia, la próxima parada
-  y el paso de la ruta que toca, con enlace directo.
+- **Mapa interactivo 2D/3D** en cada guía: arrastrar, zoom con botones, rueda o
+  pellizco, doble toque, pantalla completa, marcadores clicables y ficha del
+  gimnasio o paso.
+- **Posición actual y siguiente objetivo**: marcador azul de “Estás aquí”,
+  siguiente paso en ámbar y línea guía entre ambos, con botón
+  **“¿Dónde estoy?”** que centra el mapa.
+- **Niveles diferenciados**: superficie, cuevas/relieves y rutas acuáticas, con
+  placas 3D apiladas, separación ajustable y modo aislar nivel.
+- **Buscador de destinos** para saltar directamente a un gimnasio o paso.
+- **Coordenadas curadas por región** para colocar gimnasios en posiciones
+  aproximadas a su geografía, con texturas, curvas de nivel y ambiente
+  holográfico.
+- **Ficha móvil tipo bottom sheet** al tocar un marcador en pantalla pequeña.
 - **Modo aventura** en cada guía: tarjeta “Tu siguiente paso”, progreso de la
   ruta, selector para saltar a cualquier paso, botón “Hecho y seguir” que
   avanza automáticamente y enlaces profundos `?paso=N`.

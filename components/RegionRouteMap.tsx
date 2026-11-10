@@ -10,6 +10,7 @@ import {
   Check,
   Compass,
   Layers,
+  LocateFixed,
   MapPin,
   Maximize2,
   Minimize2,
@@ -18,9 +19,14 @@ import {
   RotateCcw,
   Swords,
   Target,
+  X,
 } from 'lucide-react';
 import { getGymTypeVisual } from '@/lib/gym-visuals';
 import { getRegionMap } from '@/lib/region-maps';
+import {
+  getRegionGymPositions,
+  type MapPoint,
+} from '@/lib/region-map-coords';
 import type { GameGym } from '@/types/game';
 
 export interface MapStep {
@@ -200,12 +206,21 @@ export default function RegionRouteMap({
   const [isDragging, setIsDragging] = useState(false);
   const [isFullscreen, setIsFullscreen] = useState(false);
   const [is3D, setIs3D] = useState(false);
+  const [separation, setSeparation] = useState(1);
+  const [isolateLevel, setIsolateLevel] = useState(false);
   const mapRef = useRef<HTMLDivElement>(null);
   const dragRef = useRef<{
     startX: number;
     startY: number;
     originX: number;
     originY: number;
+  } | null>(null);
+  const pointersRef = useRef(
+    new Map<number, { x: number; y: number }>()
+  );
+  const pinchRef = useRef<{
+    distance: number;
+    scale: number;
   } | null>(null);
 
   useEffect(() => {
@@ -216,6 +231,21 @@ export default function RegionRouteMap({
     document.addEventListener('fullscreenchange', handleFullscreenChange);
     return () =>
       document.removeEventListener('fullscreenchange', handleFullscreenChange);
+  }, []);
+
+  useEffect(() => {
+    const element = mapRef.current;
+    if (!element) return;
+
+    const handleWheel = (event: WheelEvent) => {
+      event.preventDefault();
+      setScale((current) =>
+        clamp(current - event.deltaY * 0.0015, 1, 2.5)
+      );
+    };
+
+    element.addEventListener('wheel', handleWheel, { passive: false });
+    return () => element.removeEventListener('wheel', handleWheel);
   }, []);
 
   if (gyms.length === 0 && steps.length === 0) return null;
@@ -265,6 +295,45 @@ export default function RegionRouteMap({
   const activeLevel =
     levels.find((level) => level.id === activeLevelId) ?? levels[0];
 
+  const curatedGymPositions = getRegionGymPositions(region);
+  const gymPositions = gyms.map(
+    (_, index) =>
+      curatedGymPositions[index] ??
+      MAP_POSITIONS[index % MAP_POSITIONS.length]
+  );
+
+  const lastCompletedStepIndex = steps.reduce(
+    (last, step) => (step.done ? Math.max(last, step.index) : last),
+    -1
+  );
+  const currentStep =
+    lastCompletedStepIndex >= 0
+      ? steps.find((step) => step.index === lastCompletedStepIndex)
+      : undefined;
+  const nextStep =
+    nextStepIndex !== undefined
+      ? steps.find((step) => step.index === nextStepIndex)
+      : undefined;
+
+  const getStepPoint = (step: MapStep): MapPoint => {
+    const title = normalizeText(step.title);
+    const matchIndex = gyms.findIndex(
+      (gym) =>
+        title.includes(normalizeText(gym.location)) ||
+        title.includes(normalizeText(gym.leader))
+    );
+
+    if (matchIndex >= 0) {
+      const base = gymPositions[matchIndex];
+      return {
+        x: clamp(base.x + 3, 4, 96),
+        y: clamp(base.y + 3, 4, 96),
+      };
+    }
+
+    return MAP_POSITIONS[step.index % MAP_POSITIONS.length];
+  };
+
   const selectedGymIndex =
     selected?.kind === 'gym' ? selected.index : null;
   const activeGymIndex =
@@ -286,11 +355,12 @@ export default function RegionRouteMap({
   const selectedStepIndex =
     selected?.kind === 'step' ? selected.index : null;
   const activeStep =
-    activeLevel.id !== 'superficie'
-      ? (activeLevel.steps.find((step) => step.index === selectedStepIndex) ??
-        activeLevel.steps.find((step) => !step.done) ??
-        activeLevel.steps[0])
-      : undefined;
+    selectedStepIndex !== null
+      ? steps.find((step) => step.index === selectedStepIndex)
+      : activeLevel.id !== 'superficie'
+        ? (activeLevel.steps.find((step) => !step.done) ??
+          activeLevel.steps[0])
+        : undefined;
 
   const activeItemsCount =
     activeLevel.id === 'superficie' ? gyms.length : activeLevel.steps.length;
@@ -331,20 +401,110 @@ export default function RegionRouteMap({
     }
   };
 
+  const focusPoint = (point: MapPoint) => {
+    const element = mapRef.current;
+    if (!element) return;
+
+    const rect = element.getBoundingClientRect();
+    const targetScale = Math.max(1.35, scale);
+    const nextOffset = {
+      x: -((point.x / 100) - 0.5) * rect.width * targetScale,
+      y: -((point.y / 100) - 0.5) * rect.height * targetScale,
+    };
+
+    setIs3D(false);
+    setScale(targetScale);
+    setOffset(nextOffset);
+  };
+
+  const focusOnGym = (index: number) => {
+    const point = gymPositions[index];
+    if (!point) return;
+
+    setActiveLevelId('superficie');
+    setSelected({ kind: 'gym', index });
+    focusPoint(point);
+  };
+
+  const focusOnStep = (step: MapStep) => {
+    setActiveLevelId(classifyStep(step));
+    setSelected({ kind: 'step', index: step.index });
+    focusPoint(getStepPoint(step));
+  };
+
+  const focusCurrent = () => {
+    const step = currentStep ?? nextStep ?? steps[0];
+
+    if (step) {
+      focusOnStep(step);
+      return;
+    }
+
+    if (nextGymIndex >= 0) focusOnGym(nextGymIndex);
+    else if (lastCompletedIndex >= 0) focusOnGym(lastCompletedIndex);
+  };
+
+  const pinchDistance = (): number | null => {
+    const points = Array.from(pointersRef.current.values());
+    if (points.length < 2) return null;
+    return Math.hypot(
+      points[0].x - points[1].x,
+      points[0].y - points[1].y
+    );
+  };
+
   const handlePointerDown = (event: PointerEvent<HTMLDivElement>) => {
     if (event.button !== 0) return;
 
-    dragRef.current = {
-      startX: event.clientX,
-      startY: event.clientY,
-      originX: offset.x,
-      originY: offset.y,
-    };
+    pointersRef.current.set(event.pointerId, {
+      x: event.clientX,
+      y: event.clientY,
+    });
     event.currentTarget.setPointerCapture(event.pointerId);
-    setIsDragging(true);
+
+    if (pointersRef.current.size === 2) {
+      const distance = pinchDistance();
+      dragRef.current = null;
+      setIsDragging(false);
+      if (distance) {
+        pinchRef.current = { distance, scale };
+      }
+      return;
+    }
+
+    if (pointersRef.current.size === 1) {
+      dragRef.current = {
+        startX: event.clientX,
+        startY: event.clientY,
+        originX: offset.x,
+        originY: offset.y,
+      };
+      setIsDragging(true);
+    }
   };
 
   const handlePointerMove = (event: PointerEvent<HTMLDivElement>) => {
+    if (!pointersRef.current.has(event.pointerId)) return;
+
+    pointersRef.current.set(event.pointerId, {
+      x: event.clientX,
+      y: event.clientY,
+    });
+
+    if (pointersRef.current.size >= 2 && pinchRef.current) {
+      const distance = pinchDistance();
+      if (distance) {
+        setScale(
+          clamp(
+            pinchRef.current.scale * (distance / pinchRef.current.distance),
+            1,
+            2.5
+          )
+        );
+      }
+      return;
+    }
+
     const drag = dragRef.current;
     if (!drag) return;
 
@@ -354,9 +514,95 @@ export default function RegionRouteMap({
     });
   };
 
-  const endDrag = () => {
+  const endDrag = (event: PointerEvent<HTMLDivElement>) => {
+    pointersRef.current.delete(event.pointerId);
+
+    if (pointersRef.current.size < 2) {
+      pinchRef.current = null;
+    }
+
+    if (pointersRef.current.size === 1) {
+      const [[, point]] = Array.from(pointersRef.current.entries());
+      dragRef.current = {
+        startX: point.x,
+        startY: point.y,
+        originX: offset.x,
+        originY: offset.y,
+      };
+      setIsDragging(true);
+      return;
+    }
+
     dragRef.current = null;
     setIsDragging(false);
+  };
+
+  const renderStepMarker = (
+    step: MapStep,
+    point: MapPoint,
+    keyPrefix: string
+  ) => {
+    const isCurrent = currentStep?.index === step.index;
+    const isNext = step.index === nextStepIndex;
+    const isSelected = step.index === activeStep?.index;
+
+    return (
+      <button
+        key={`${keyPrefix}-${step.index}`}
+        type="button"
+        onPointerDown={(event) => event.stopPropagation()}
+        onClick={() => setSelected({ kind: 'step', index: step.index })}
+        aria-label={`Paso ${step.index + 1}. ${step.title}. ${
+          isCurrent ? 'Estás aquí' : statusForStep(step, nextStepIndex)
+        }`}
+        aria-pressed={isSelected}
+        className="group absolute z-10 -translate-x-1/2 -translate-y-1/2 focus:outline-none"
+        style={{ left: `${point.x}%`, top: `${point.y}%` }}
+      >
+        <span className="flex flex-col items-center transition">
+          <span
+            className={`flex h-8 w-8 items-center justify-center rounded-full border-2 text-[10px] font-black shadow-lg group-focus-visible:ring-4 group-focus-visible:ring-white/60 ${
+              isSelected ? 'ring-4 ring-white/55' : ''
+            } ${
+              isNext && !isCurrent
+                ? 'shadow-[0_0_0_6px_rgba(251,191,36,0.28)]'
+                : ''
+            } ${
+              isCurrent
+                ? 'border-blue-100 bg-blue-500 text-white'
+                : step.done
+                  ? 'border-green-200 bg-green-500 text-white'
+                  : isNext
+                    ? 'border-white bg-amber-300 text-amber-950'
+                    : 'border-white/80 bg-white text-gray-900'
+            }`}
+          >
+            {isCurrent ? (
+              <MapPin className="h-4 w-4" />
+            ) : step.done ? (
+              <Check className="h-4 w-4" />
+            ) : (
+              step.index + 1
+            )}
+          </span>
+          <span
+            className={`mt-1 max-w-[120px] truncate rounded px-1.5 py-0.5 text-[9px] font-bold shadow-sm ${
+              is3D ? 'hidden' : 'hidden sm:block'
+            } ${
+              isCurrent
+                ? 'bg-blue-500 text-white'
+                : isNext
+                  ? 'bg-amber-300 text-amber-950'
+                  : step.done
+                    ? 'bg-green-500/90 text-white'
+                    : 'bg-black/40 text-white'
+            }`}
+          >
+            {isCurrent ? 'Estás aquí' : `Paso ${step.index + 1}`}
+          </span>
+        </span>
+      </button>
+    );
   };
 
   const renderLevelPlate = (
@@ -366,27 +612,65 @@ export default function RegionRouteMap({
   ) => {
     const isSurface = level.id === 'superficie';
     const points = isSurface
-      ? gyms.map((_, index) => MAP_POSITIONS[index % MAP_POSITIONS.length])
-      : level.steps.map(
-          (step) => MAP_POSITIONS[step.index % MAP_POSITIONS.length]
-        );
+      ? gymPositions
+      : level.steps.map((step) => getStepPoint(step));
     const polyline = points
       .map((point) => `${point.x},${point.y}`)
       .join(' ');
     const gradientId = `map-land-${level.id}`;
-    const depthOffset = is3D ? depthIndex * 30 : 0;
-    const yOffset = is3D ? depthIndex * 12 : 0;
-    const plateScale = is3D ? 1 - depthIndex * 0.045 : 1;
+    const depthOffset = is3D ? depthIndex * 30 * separation : 0;
+    const yOffset = is3D ? depthIndex * 12 * separation : 0;
+    const xOffset = is3D ? depthIndex * 7 : 0;
+    const levelScale =
+      is3D && level.id === 'cuevas'
+        ? 0.9
+        : is3D && level.id === 'agua'
+          ? 0.8
+          : 1;
+    const plateScale = is3D ? (1 - depthIndex * 0.035) * levelScale : 1;
+    const surfaceStepHighlights = isSurface
+      ? [currentStep, nextStep].filter(
+          (step, index, array): step is MapStep =>
+            step !== undefined &&
+            classifyStep(step) === 'superficie' &&
+            array.findIndex(
+              (candidate) => candidate?.index === step.index
+            ) === index
+        ).filter((step) => {
+          if (
+            step.index === currentStep?.index ||
+            step.index === selectedStepIndex
+          ) {
+            return true;
+          }
+
+          const point = getStepPoint(step);
+          return gymPositions.every(
+            (gymPoint) =>
+              Math.hypot(gymPoint.x - point.x, gymPoint.y - point.y) >
+              10
+          );
+        })
+      : [];
+    const currentLevelPoint =
+      currentStep && classifyStep(currentStep) === level.id
+        ? getStepPoint(currentStep)
+        : null;
+    const nextLevelPoint =
+      nextStep && classifyStep(nextStep) === level.id
+        ? getStepPoint(nextStep)
+        : null;
 
     return (
       <div
         key={level.id}
-        className="absolute inset-0 origin-center"
+        className="absolute inset-0 origin-center transition-[transform,opacity] duration-300"
         style={{
           transform: is3D
-            ? `translateZ(-${depthOffset}px) translateY(${yOffset}px) scale(${plateScale})`
+            ? `translateZ(-${depthOffset}px) translateY(${yOffset}px) translateX(${xOffset}px) scale(${plateScale})`
             : undefined,
-          opacity: is3D && !isActive ? 0.3 : 1,
+          opacity:
+            is3D && !isActive ? (isolateLevel ? 0.08 : 0.3) : 1,
           pointerEvents: isActive ? 'auto' : 'none',
           transformStyle: is3D ? 'preserve-3d' : undefined,
         }}
@@ -489,6 +773,31 @@ export default function RegionRouteMap({
             />
           ))}
 
+          {[0.84, 0.7].map((contourScale, contourIndex) => (
+            <g
+              key={`contour-${level.id}-${contourIndex}`}
+              transform={`translate(50 50) scale(${contourScale}) translate(-50 -50)`}
+              fill="none"
+              stroke="rgba(255,255,255,0.16)"
+              strokeWidth="0.3"
+            >
+              {regionMap.paths.map((path, index) => (
+                <path
+                  key={`contour-path-${level.id}-${contourIndex}-${index}`}
+                  d={path}
+                />
+              ))}
+              {regionMap.circles?.map((circle, index) => (
+                <circle
+                  key={`contour-island-${level.id}-${contourIndex}-${index}`}
+                  cx={circle.cx}
+                  cy={circle.cy}
+                  r={circle.r}
+                />
+              ))}
+            </g>
+          ))}
+
           {regionMap.lines?.map((line, index) => (
             <path
               key={`region-line-${level.id}-${index}`}
@@ -538,12 +847,27 @@ export default function RegionRouteMap({
               />
             );
           })}
+
+          {currentLevelPoint &&
+            nextLevelPoint &&
+            currentStep?.index !== nextStep?.index && (
+              <line
+                x1={currentLevelPoint.x}
+                y1={currentLevelPoint.y}
+                x2={nextLevelPoint.x}
+                y2={nextLevelPoint.y}
+                stroke="rgba(96,165,250,0.8)"
+                strokeWidth="0.7"
+                strokeDasharray="2 1.2"
+                strokeLinecap="round"
+              />
+            )}
         </svg>
 
         {isActive &&
           isSurface &&
           gyms.map((gym, index) => {
-            const point = MAP_POSITIONS[index % MAP_POSITIONS.length];
+            const point = gymPositions[index];
             const done = completedSet.has(index);
             const isNext = index === nextGymIndex;
             const isSelected = index === activeGymIndex;
@@ -600,73 +924,33 @@ export default function RegionRouteMap({
           })}
 
         {isActive &&
-          !isSurface &&
-          level.steps.map((step) => {
-            const point = MAP_POSITIONS[step.index % MAP_POSITIONS.length];
-            const isNext = step.index === nextStepIndex;
-            const isSelected = step.index === activeStep?.index;
+          isSurface &&
+          surfaceStepHighlights.map((step) =>
+            renderStepMarker(
+              step,
+              getStepPoint(step),
+              `surface-step-${level.id}`
+            )
+          )}
 
-            return (
-              <button
-                key={`step-${level.id}-${step.index}`}
-                type="button"
-                onPointerDown={(event) => event.stopPropagation()}
-                onClick={() =>
-                  setSelected({ kind: 'step', index: step.index })
-                }
-                aria-label={`Paso ${step.index + 1}. ${step.title}. ${statusForStep(
-                  step,
-                  nextStepIndex
-                )}`}
-                aria-pressed={isSelected}
-                className="group absolute z-10 -translate-x-1/2 -translate-y-1/2 focus:outline-none"
-                style={{ left: `${point.x}%`, top: `${point.y}%` }}
-              >
-                <span className="flex flex-col items-center transition">
-                  <span
-                    className={`flex h-8 w-8 items-center justify-center rounded-full border-2 text-[10px] font-black shadow-lg group-focus-visible:ring-4 group-focus-visible:ring-white/60 ${
-                      isSelected ? 'ring-4 ring-white/55' : ''
-                    } ${
-                      isNext
-                        ? 'shadow-[0_0_0_6px_rgba(251,191,36,0.28)]'
-                        : ''
-                    } ${
-                      step.done
-                        ? 'border-green-200 bg-green-500 text-white'
-                        : isNext
-                          ? 'border-white bg-amber-300 text-amber-950'
-                          : 'border-white/80 bg-white text-gray-900'
-                    }`}
-                  >
-                    {step.done ? (
-                      <Check className="h-4 w-4" />
-                    ) : (
-                      step.index + 1
-                    )}
-                  </span>
-                  <span
-                    className={`mt-1 max-w-[120px] truncate rounded px-1.5 py-0.5 text-[9px] font-bold shadow-sm ${
-                      is3D ? 'hidden' : 'hidden sm:block'
-                    } ${
-                      isNext
-                        ? 'bg-amber-300 text-amber-950'
-                        : step.done
-                          ? 'bg-green-500/90 text-white'
-                          : 'bg-black/40 text-white'
-                    }`}
-                  >
-                    Paso {step.index + 1}
-                  </span>
-                </span>
-              </button>
-            );
-          })}
+        {isActive &&
+          !isSurface &&
+          level.steps.map((step) =>
+            renderStepMarker(
+              step,
+              getStepPoint(step),
+              `step-${level.id}`
+            )
+          )}
       </div>
     );
   };
 
   return (
-    <section className="relative overflow-hidden rounded-2xl border border-cyan-200/20 bg-gradient-to-br from-slate-950 via-cyan-950 to-blue-950 p-5 text-white shadow-lg">
+    <section
+      className="relative overflow-hidden rounded-2xl border border-cyan-200/20 bg-gradient-to-br from-slate-950 via-cyan-950 to-blue-950 p-5 text-white shadow-lg"
+      aria-label={`Mapa interactivo de ${regionMap.label}`}
+    >
       <div
         className={`pointer-events-none absolute inset-x-0 top-0 h-1 bg-gradient-to-r ${accent}`}
       />
@@ -680,6 +964,12 @@ export default function RegionRouteMap({
       />
 
       <div className="relative">
+        <p className="sr-only" aria-live="polite">
+          {activeLevel.label}. {activeItemsCount}{' '}
+          {activeItemsCount === 1 ? 'parada' : 'paradas'}. Nivel{' '}
+          {levels.findIndex((level) => level.id === activeLevel.id) + 1} de{' '}
+          {levels.length}.
+        </p>
         <div className="flex flex-wrap items-end justify-between gap-2">
           <div>
             <div className="flex items-center gap-2 text-xs font-black uppercase tracking-widest text-white/75">
@@ -726,6 +1016,15 @@ export default function RegionRouteMap({
             </span>
           )}
 
+          {currentStep && (
+            <span className="inline-flex min-w-0 items-center gap-1.5 rounded-full bg-blue-500/20 px-3 py-1 font-bold text-blue-100 ring-1 ring-blue-300/30">
+              <MapPin className="h-3.5 w-3.5" />
+              <span className="max-w-[220px] truncate">
+                Estás aquí: {currentStep.title}
+              </span>
+            </span>
+          )}
+
           {nextStepTitle &&
             nextStepIndex !== undefined &&
             nextStepIndex >= 0 &&
@@ -738,6 +1037,15 @@ export default function RegionRouteMap({
                 Ir al paso {nextStepIndex + 1}: {nextStepTitle}
               </button>
             )}
+
+          <button
+            type="button"
+            onClick={focusCurrent}
+            className="inline-flex items-center gap-1.5 rounded-full border border-cyan-200/35 bg-cyan-300/10 px-3 py-1 font-bold text-cyan-100 transition hover:bg-cyan-300/20"
+          >
+            <LocateFixed className="h-3.5 w-3.5" />
+            ¿Dónde estoy?
+          </button>
 
           <button
             type="button"
@@ -790,12 +1098,91 @@ export default function RegionRouteMap({
           </div>
         )}
 
+        <div className="mt-2 flex flex-wrap items-center gap-3 text-[10px] text-white/70">
+          <label className="inline-flex items-center gap-1.5">
+            <span className="sr-only">Ir a una parada del mapa</span>
+            <select
+              value=""
+              onChange={(event) => {
+                const [kind, rawIndex] = event.target.value.split(':');
+                const index = Number.parseInt(rawIndex, 10);
+
+                if (kind === 'gym') {
+                  focusOnGym(index);
+                } else if (kind === 'step') {
+                  const step = steps.find(
+                    (candidate) => candidate.index === index
+                  );
+                  if (step) focusOnStep(step);
+                }
+              }}
+              className="rounded-lg border border-cyan-200/20 bg-slate-950/60 px-2.5 py-1.5 text-xs font-bold text-white focus:border-cyan-200 focus:outline-none focus:ring-2 focus:ring-cyan-300/30"
+            >
+              <option value="" disabled>
+                Ir a una parada…
+              </option>
+              {gyms.length > 0 && (
+                <optgroup label="Gimnasios">
+                  {gyms.map((gym, index) => (
+                    <option key={`jump-gym-${index}`} value={`gym:${index}`}>
+                      {gym.location} · {gym.leader}
+                    </option>
+                  ))}
+                </optgroup>
+              )}
+              {steps.length > 0 && (
+                <optgroup label="Pasos de la ruta">
+                  {steps.map((step) => (
+                    <option
+                      key={`jump-step-${step.index}`}
+                      value={`step:${step.index}`}
+                    >
+                      Paso {step.index + 1} · {step.title}
+                    </option>
+                  ))}
+                </optgroup>
+              )}
+            </select>
+          </label>
+
+          {is3D && levels.length > 1 && (
+            <>
+              <label className="inline-flex items-center gap-2">
+                Separación
+                <input
+                  type="range"
+                  min="0.6"
+                  max="1.6"
+                  step="0.1"
+                  value={separation}
+                  onChange={(event) =>
+                    setSeparation(Number(event.target.value))
+                  }
+                  className="h-1 w-24 accent-cyan-300"
+                />
+              </label>
+              <label className="inline-flex items-center gap-1.5">
+                <input
+                  type="checkbox"
+                  checked={isolateLevel}
+                  onChange={(event) =>
+                    setIsolateLevel(event.target.checked)
+                  }
+                  className="h-3.5 w-3.5 accent-cyan-300"
+                />
+                Aislar nivel activo
+              </label>
+            </>
+          )}
+        </div>
+
         <div
           ref={mapRef}
           onPointerDown={handlePointerDown}
           onPointerMove={handlePointerMove}
           onPointerUp={endDrag}
           onPointerCancel={endDrag}
+          onDoubleClick={zoomIn}
           className={`relative mt-4 touch-none overflow-hidden rounded-xl border border-cyan-200/20 bg-gradient-to-br from-slate-950 via-cyan-950 to-blue-950 ${
             isFullscreen
               ? 'h-[calc(100vh-2rem)]'
@@ -809,6 +1196,13 @@ export default function RegionRouteMap({
               backgroundImage:
                 'radial-gradient(circle at 1px 1px, rgba(255,255,255,0.35) 1px, transparent 0)',
               backgroundSize: '22px 22px',
+            }}
+          />
+          <div
+            className="pointer-events-none absolute inset-0 opacity-20"
+            style={{
+              backgroundImage:
+                'repeating-linear-gradient(0deg, rgba(125,211,252,0.12) 0 1px, transparent 1px 4px)',
             }}
           />
           <div className="pointer-events-none absolute -left-10 top-8 h-24 w-40 rounded-full bg-cyan-200/10 blur-2xl" />
@@ -903,9 +1297,27 @@ export default function RegionRouteMap({
           </span>
         </div>
 
-        {activeLevel.id === 'superficie' && activeGym && (
-          <div className="mt-3 rounded-xl border border-white/15 bg-black/20 p-3">
-            <div className="flex flex-wrap items-center gap-3">
+        {activeLevel.id === 'superficie' &&
+          activeGym &&
+          selected?.kind !== 'step' && (
+          <div
+            className={`relative mt-3 rounded-xl border border-white/15 bg-black/20 p-3 ${
+              selected
+                ? 'max-sm:fixed max-sm:inset-x-2 max-sm:bottom-20 max-sm:z-40 max-sm:max-h-[60vh] max-sm:overflow-y-auto max-sm:bg-slate-950/95 max-sm:shadow-2xl'
+                : ''
+            }`}
+          >
+            {selected && (
+              <button
+                type="button"
+                onClick={() => setSelected(null)}
+                aria-label="Cerrar ficha"
+                className="absolute right-2 top-2 rounded-full bg-white/10 p-1 text-white/80 transition hover:bg-white/20 sm:hidden"
+              >
+                <X className="h-4 w-4" />
+              </button>
+            )}
+            <div className="flex flex-col items-start gap-3 sm:flex-row sm:items-center">
               {activeVisual && (
                 // eslint-disable-next-line @next/next/no-img-element
                 <img
@@ -915,7 +1327,7 @@ export default function RegionRouteMap({
                   className="h-14 w-14 flex-none object-contain"
                 />
               )}
-              <div className="min-w-0 flex-1">
+              <div className="min-w-0 w-full flex-1">
                 <p className="text-[10px] font-black uppercase tracking-widest text-white/60">
                   {statusForGym(
                     activeGymIndex,
@@ -962,13 +1374,30 @@ export default function RegionRouteMap({
           </div>
         )}
 
-        {activeLevel.id !== 'superficie' && activeStep && (
-          <div className="mt-3 rounded-xl border border-white/15 bg-black/20 p-3">
-            <div className="flex flex-wrap items-center gap-3">
+        {activeStep &&
+          (activeLevel.id !== 'superficie' || selected?.kind === 'step') && (
+          <div
+            className={`relative mt-3 rounded-xl border border-white/15 bg-black/20 p-3 ${
+              selected
+                ? 'max-sm:fixed max-sm:inset-x-2 max-sm:bottom-20 max-sm:z-40 max-sm:max-h-[60vh] max-sm:overflow-y-auto max-sm:bg-slate-950/95 max-sm:shadow-2xl'
+                : ''
+            }`}
+          >
+            {selected && (
+              <button
+                type="button"
+                onClick={() => setSelected(null)}
+                aria-label="Cerrar ficha"
+                className="absolute right-2 top-2 rounded-full bg-white/10 p-1 text-white/80 transition hover:bg-white/20 sm:hidden"
+              >
+                <X className="h-4 w-4" />
+              </button>
+            )}
+            <div className="flex flex-col items-start gap-3 sm:flex-row sm:items-center">
               <div className="flex h-12 w-12 flex-none items-center justify-center rounded-xl bg-cyan-300/15 text-cyan-100 ring-1 ring-cyan-200/25">
                 <Target className="h-6 w-6" />
               </div>
-              <div className="min-w-0 flex-1">
+              <div className="min-w-0 w-full flex-1">
                 <p className="text-[10px] font-black uppercase tracking-widest text-white/60">
                   {statusForStep(activeStep, nextStepIndex)} ·{' '}
                   {activeLevel.label}
@@ -1069,6 +1498,7 @@ export default function RegionRouteMap({
               })
             : activeLevel.steps.map((step) => {
                 const isNext = step.index === nextStepIndex;
+                const isCurrent = currentStep?.index === step.index;
                 const isSelected = step.index === activeStep?.index;
 
                 return (
@@ -1086,14 +1516,18 @@ export default function RegionRouteMap({
                     >
                       <span
                         className={`flex h-5 w-5 flex-none items-center justify-center rounded-full text-[9px] font-black ${
-                          step.done
-                            ? 'bg-green-500 text-white'
-                            : isNext
-                              ? 'bg-amber-300 text-amber-950'
-                              : 'bg-white text-gray-900'
+                          isCurrent
+                            ? 'bg-blue-500 text-white'
+                            : step.done
+                              ? 'bg-green-500 text-white'
+                              : isNext
+                                ? 'bg-amber-300 text-amber-950'
+                                : 'bg-white text-gray-900'
                         }`}
                       >
-                        {step.done ? (
+                        {isCurrent ? (
+                          <MapPin className="h-3 w-3" />
+                        ) : step.done ? (
                           <Check className="h-3 w-3" />
                         ) : (
                           step.index + 1
@@ -1104,18 +1538,22 @@ export default function RegionRouteMap({
                       </span>
                       <span
                         className={`flex-none text-[9px] font-bold ${
-                          step.done
-                            ? 'text-green-200'
-                            : isNext
-                              ? 'text-amber-200'
-                              : 'text-white/55'
+                          isCurrent
+                            ? 'text-blue-200'
+                            : step.done
+                              ? 'text-green-200'
+                              : isNext
+                                ? 'text-amber-200'
+                                : 'text-white/55'
                         }`}
                       >
-                        {step.done
-                          ? 'Completado'
-                          : isNext
-                            ? 'Siguiente'
-                            : `Paso ${step.index + 1}`}
+                        {isCurrent
+                          ? 'Estás aquí'
+                          : step.done
+                            ? 'Completado'
+                            : isNext
+                              ? 'Siguiente'
+                              : `Paso ${step.index + 1}`}
                       </span>
                     </button>
                   </li>
