@@ -44,7 +44,18 @@ checklists por juego, guías paso a paso y visor 3D.
 - **Capturas recomendadas para el próximo desafío**, calculadas con los tipos
   del siguiente gimnasio y el Pokédex regional del juego.
 - **Continuar donde lo dejaste** desde el inicio y desde el listado de guías,
-  con progreso por guía y acceso directo al siguiente paso pendiente.
+  con progreso por guía, acceso directo al siguiente paso pendiente y la última
+  guía/pestaña guardada también en la cuenta para cambiar de dispositivo.
+- **Pestañas con URL propia** (`?tab=equipo`, `?tab=desafios`…), de modo que
+  recargar o compartir una guía mantiene la sección abierta.
+- **Captura contextual**: al abrir una ficha desde una guía, el botón añade el
+  Pokémon al equipo de ese juego, no al equipo global.
+- **Progreso de aventura separado** del porcentaje del Pokédex, con pasos,
+  insignias y checklist agrupados.
+- **Gimnasios conectados con la ruta**: cada desafío enlaza a su paso
+  relacionado y permite marcar insignia y paso en una sola acción.
+- **Estado de guardado visible** y cambio de contraseña desde la cuenta, que
+  invalida las sesiones de otros dispositivos.
 - **Modo oscuro** con toggle claro/oscuro, persistencia en localStorage,
   respeto a la preferencia del sistema y una capa de compatibilidad que adapta
   fondos, textos, bordes y degradados de toda la interfaz.

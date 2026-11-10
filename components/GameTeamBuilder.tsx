@@ -900,7 +900,9 @@ export default function GameTeamBuilder({
             {threats.map((threat) => (
               <Link
                 key={threat.id}
-                href={`/pokedex/${threat.id}`}
+                href={`/pokedex/${threat.id}?game=${encodeURIComponent(
+                  game.slug
+                )}`}
                 className="flex items-center gap-3 rounded-xl border border-gray-200 bg-gray-50 p-2 transition hover:border-red-200 hover:bg-red-50"
               >
                 {/* eslint-disable-next-line @next/next/no-img-element */}

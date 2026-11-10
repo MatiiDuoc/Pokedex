@@ -4,6 +4,7 @@ import { useState } from 'react';
 import { usePathname, useRouter } from 'next/navigation';
 import { Box, Check, LogIn, Sparkles } from 'lucide-react';
 import Modal3D from '@/components/Modal3D';
+import { useGameTeam } from '@/components/AccountProvider';
 import { useTeam } from '@/components/TeamProvider';
 import {
   TYPE_COLORS,
@@ -24,6 +25,8 @@ interface PokemonDetailHeroProps {
   weight: number;
   generation: number;
   legendaryCategory: LegendaryCategory;
+  gameSlug?: string | null;
+  gameTitle?: string | null;
 }
 
 export default function PokemonDetailHero({
@@ -36,10 +39,16 @@ export default function PokemonDetailHero({
   weight,
   generation,
   legendaryCategory,
+  gameSlug = null,
+  gameTitle = null,
 }: PokemonDetailHeroProps) {
   const router = useRouter();
   const pathname = usePathname();
-  const { add, has, isFull, requiresLogin, hydrated } = useTeam();
+  const globalTeam = useTeam();
+  const gameTeam = useGameTeam(gameSlug ?? '');
+  const { add, has, isFull, requiresLogin, hydrated } = gameSlug
+    ? gameTeam
+    : globalTeam;
   const [shiny, setShiny] = useState(false);
   const [show3d, setShow3d] = useState(false);
 
@@ -57,7 +66,10 @@ export default function PokemonDetailHero({
 
   const handleCapture = () => {
     if (requiresLogin) {
-      router.push(`/login?next=${encodeURIComponent(pathname)}`);
+      const nextPath = gameSlug
+        ? `${pathname}?game=${encodeURIComponent(gameSlug)}`
+        : pathname;
+      router.push(`/login?next=${encodeURIComponent(nextPath)}`);
       return;
     }
     add({
@@ -82,10 +94,16 @@ export default function PokemonDetailHero({
     : requiresLogin
       ? 'Inicia sesión'
       : isInTeam
-        ? 'En tu equipo'
+        ? gameSlug
+          ? `En equipo de ${gameTitle ?? 'este juego'}`
+          : 'En tu equipo'
         : isFull
-          ? 'Equipo lleno'
-          : 'Capturar';
+          ? gameSlug
+            ? 'Equipo del juego lleno'
+            : 'Equipo lleno'
+          : gameSlug
+            ? `Añadir a ${gameTitle ?? 'mi equipo'}`
+            : 'Capturar';
 
   return (
     <>
@@ -204,6 +222,13 @@ export default function PokemonDetailHero({
                 Ver en 3D
               </button>
             </div>
+
+            {gameSlug && !isInTeam && (
+              <p className="mt-2 text-xs font-semibold text-white/75">
+                Se añadirá al equipo de {gameTitle ?? 'este juego'}, no al
+                equipo global.
+              </p>
+            )}
           </div>
         </div>
       </section>

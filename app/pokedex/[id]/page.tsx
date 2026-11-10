@@ -5,6 +5,7 @@ import EncounterList from '@/components/EncounterList';
 import EvolutionTree from '@/components/EvolutionTree';
 import PokemonDetailHero from '@/components/PokemonDetailHero';
 import TypeMatchupList from '@/components/TypeMatchupList';
+import { gamesBySlug } from '@/data/games';
 import { getSiteUrl } from '@/lib/site';
 import {
   TYPE_COLORS,
@@ -20,6 +21,7 @@ export const revalidate = 604800;
 
 interface PokemonPageProps {
   params: Promise<{ id: string }>;
+  searchParams: Promise<{ game?: string | string[] }>;
 }
 
 function parseId(value: string): number | null {
@@ -65,8 +67,11 @@ export async function generateMetadata({
   };
 }
 
-export default async function PokemonDetailPage({ params }: PokemonPageProps) {
-  const { id: idParam } = await params;
+export default async function PokemonDetailPage({
+  params,
+  searchParams,
+}: PokemonPageProps) {
+  const [{ id: idParam }, query] = await Promise.all([params, searchParams]);
   const id = parseId(idParam);
   if (!id) redirect('/pokedex');
 
@@ -75,6 +80,9 @@ export default async function PokemonDetailPage({ params }: PokemonPageProps) {
     getPokemonEncounters(id),
   ]);
   if (!detail) redirect('/pokedex');
+
+  const rawGame = Array.isArray(query.game) ? query.game[0] : query.game;
+  const game = rawGame ? gamesBySlug.get(rawGame) : undefined;
 
   const displayName = formatPokemonName(detail.name);
   const legendaryLabel = getLegendaryLabel(detail.legendaryCategory);
@@ -115,6 +123,8 @@ export default async function PokemonDetailPage({ params }: PokemonPageProps) {
           weight={detail.weight}
           generation={detail.generation}
           legendaryCategory={detail.legendaryCategory}
+          gameSlug={game?.slug ?? null}
+          gameTitle={game?.shortTitle ?? null}
         />
 
         <div className="mt-6 grid gap-6 lg:grid-cols-3">

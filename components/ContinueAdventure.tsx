@@ -4,12 +4,14 @@ import Link from 'next/link';
 import { useEffect, useState } from 'react';
 import { BookOpen, LogIn, Play } from 'lucide-react';
 import { useAccount } from '@/components/AccountProvider';
+import type { LastGuideData } from '@/types/last-guide';
 
 interface LastGuide {
   slug: string;
   title: string;
   region: string;
   accent: string;
+  tab?: string;
   checklistTotal: number;
   stepsTotal?: number;
   challengesTotal?: number;
@@ -51,6 +53,7 @@ function readLastGuide(): LastGuide | null {
         typeof parsed.accent === 'string'
           ? parsed.accent
           : 'from-red-600 to-orange-500',
+      tab: typeof parsed.tab === 'string' ? parsed.tab : undefined,
       checklistTotal: parsed.checklistTotal,
       stepsTotal:
         typeof parsed.stepsTotal === 'number' ? parsed.stepsTotal : 0,
@@ -75,6 +78,7 @@ export default function ContinueAdventure({
   const { user, guides, authLoading, dataLoading } = useAccount();
   const [lastGuide, setLastGuide] = useState<LastGuide | null>(null);
   const [mounted, setMounted] = useState(false);
+  const [remoteChecked, setRemoteChecked] = useState(false);
 
   useEffect(() => {
     // Leemos localStorage después de montar para evitar desajustes de hidratación.
@@ -83,7 +87,56 @@ export default function ContinueAdventure({
     setMounted(true);
   }, []);
 
+  useEffect(() => {
+    if (!user) return;
+
+    let cancelled = false;
+
+    fetch('/api/account/last-guide', { cache: 'no-store' })
+      .then((response) => (response.ok ? response.json() : null))
+      .then((data: { lastGuide?: LastGuideData | null } | null) => {
+        if (cancelled || !data?.lastGuide) return;
+
+        const remote = data.lastGuide;
+        const local = readLastGuide();
+
+        if (!local || remote.updatedAt >= local.updatedAt) {
+          setLastGuide({
+            slug: remote.slug,
+            title: remote.title,
+            region: remote.region,
+            accent: remote.accent,
+            tab: remote.tab,
+            checklistTotal: remote.checklistTotal,
+            stepsTotal: remote.stepsTotal,
+            challengesTotal: remote.challengesTotal,
+            nextStep: remote.nextStep,
+            nextStepTitle: remote.nextStepTitle,
+            updatedAt: remote.updatedAt,
+          });
+        }
+      })
+      .catch(() => {
+        // Sin conexión: se mantiene la copia local.
+      })
+      .finally(() => {
+        if (!cancelled) setRemoteChecked(true);
+      });
+
+    return () => {
+      cancelled = true;
+    };
+  }, [user]);
+
   if (!mounted || authLoading) {
+    return (
+      <section className="mx-auto max-w-7xl px-4">
+        <div className="h-44 animate-pulse rounded-2xl bg-white shadow-sm" />
+      </section>
+    );
+  }
+
+  if (user && !remoteChecked && !lastGuide) {
     return (
       <section className="mx-auto max-w-7xl px-4">
         <div className="h-44 animate-pulse rounded-2xl bg-white shadow-sm" />
@@ -154,10 +207,14 @@ export default function ContinueAdventure({
       ? lastGuide.nextStep
       : null;
   const hasNextStep = nextStepNumber !== null;
+  const tabQuery =
+    lastGuide.tab && lastGuide.tab !== 'resumen'
+      ? `?tab=${encodeURIComponent(lastGuide.tab)}`
+      : '';
   const continuePath =
     nextStepNumber !== null
-      ? `/guias/${lastGuide.slug}?paso=${nextStepNumber}`
-      : `/guias/${lastGuide.slug}`;
+      ? `/guias/${lastGuide.slug}?tab=pasos&paso=${nextStepNumber}`
+      : `/guias/${lastGuide.slug}${tabQuery}`;
   const loginHref = `/login?next=${encodeURIComponent(continuePath)}`;
 
   return (

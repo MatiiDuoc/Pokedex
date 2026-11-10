@@ -34,6 +34,11 @@ import {
 import { TYPE_CHART, isPokemonType } from '@/lib/type-chart';
 import { usePokemonFilters } from '@/lib/usePokemonFilters';
 import type { GameGym, GameGuide } from '@/types/game';
+import {
+  GUIDE_TABS,
+  type GuideTabId,
+  type LastGuideData,
+} from '@/types/last-guide';
 import type { PokemonIndexEntry } from '@/types/pokemon';
 
 interface GameGuideViewProps {
@@ -59,7 +64,8 @@ export default function GameGuideView({
 }: GameGuideViewProps) {
   const [activeTab, setActiveTab] = useState<TabId>('resumen');
   const appliedDeepLink = useRef(false);
-  const { syncError } = useAccount();
+  const appliedTabLink = useRef(false);
+  const { syncError, saving, user } = useAccount();
   const {
     progress,
     loaded,
@@ -67,6 +73,7 @@ export default function GameGuideView({
     toggleCaught,
     setCaught,
     toggleChecklist,
+    setChecklist,
     setNote,
     reset,
     isChecked,
@@ -87,6 +94,35 @@ export default function GameGuideView({
   const progressReadOnly = requiresLogin || !loaded;
   const { data: filterData } = usePokemonFilters(hasPokedex && loaded);
 
+  const selectTab = useCallback((tab: TabId, step?: number) => {
+    setActiveTab(tab);
+
+    if (typeof window === 'undefined') return;
+
+    const url = new URL(window.location.href);
+    if (tab === 'resumen') url.searchParams.delete('tab');
+    else url.searchParams.set('tab', tab);
+
+    if (step !== undefined) url.searchParams.set('paso', String(step));
+    else url.searchParams.delete('paso');
+
+    window.history.replaceState(
+      null,
+      '',
+      `${url.pathname}${url.search}${url.hash}`
+    );
+  }, []);
+
+  useEffect(() => {
+    if (appliedTabLink.current) return;
+    appliedTabLink.current = true;
+
+    const rawTab = new URLSearchParams(window.location.search).get('tab');
+    if (!rawTab || !GUIDE_TABS.includes(rawTab as GuideTabId)) return;
+
+    window.setTimeout(() => setActiveTab(rawTab as TabId), 0);
+  }, []);
+
   useEffect(() => {
     const nextStep = game.walkthrough.findIndex(
       (_, index) => !progress.checklist.includes(`step:${index}`)
@@ -103,6 +139,7 @@ export default function GameGuideView({
           title: game.title,
           region: game.region,
           accent: game.accent,
+          tab: activeTab,
           checklistTotal: game.completionChecklist.length,
           stepsTotal: game.walkthrough.length,
           challengesTotal: game.gyms.length,
@@ -124,6 +161,53 @@ export default function GameGuideView({
     game.gyms.length,
     game.walkthrough,
     progress.checklist,
+    activeTab,
+  ]);
+
+  useEffect(() => {
+    if (!user || !loaded) return;
+
+    const nextStep = game.walkthrough.findIndex(
+      (_, index) => !progress.checklist.includes(`step:${index}`)
+    );
+
+    const payload: LastGuideData = {
+      slug: game.slug,
+      title: game.title,
+      region: game.region,
+      accent: game.accent,
+      tab: activeTab,
+      checklistTotal: game.completionChecklist.length,
+      stepsTotal: game.walkthrough.length,
+      challengesTotal: game.gyms.length,
+      nextStep,
+      nextStepTitle: nextStep >= 0 ? game.walkthrough[nextStep].title : null,
+      updatedAt: Date.now(),
+    };
+
+    const timer = window.setTimeout(() => {
+      void fetch('/api/account/last-guide', {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ data: payload }),
+      }).catch(() => {
+        // La copia local sigue disponible si falla la red.
+      });
+    }, 800);
+
+    return () => window.clearTimeout(timer);
+  }, [
+    user,
+    loaded,
+    game.slug,
+    game.title,
+    game.region,
+    game.accent,
+    game.completionChecklist.length,
+    game.walkthrough,
+    game.gyms.length,
+    activeTab,
+    progress.checklist,
   ]);
 
   const checklistDone = game.completionChecklist.filter((item) =>
@@ -137,13 +221,13 @@ export default function GameGuideView({
     progress.checklist.includes(`challenge:${index}`)
   ).length;
 
-  const totalTracked =
-    game.completionChecklist.length +
-    game.walkthrough.length +
-    game.gyms.length +
-    pokemon.length;
-  const doneTracked = checklistDone + stepsDone + gymsDone + dexDone;
-  const overall = totalTracked === 0 ? 0 : Math.round((doneTracked / totalTracked) * 100);
+  const adventureTotal =
+    game.completionChecklist.length + game.walkthrough.length + game.gyms.length;
+  const adventureDone = checklistDone + stepsDone + gymsDone;
+  const adventurePercentage =
+    adventureTotal === 0
+      ? 0
+      : Math.round((adventureDone / adventureTotal) * 100);
   const nextStepIndex = game.walkthrough.findIndex(
     (_, index) => !progress.checklist.includes(`step:${index}`)
   );
@@ -212,7 +296,7 @@ export default function GameGuideView({
     (index: number) => {
       if (index < 0 || index >= game.walkthrough.length) return;
 
-      setActiveTab('pasos');
+      selectTab('pasos', index);
       window.setTimeout(() => {
         const element = document.getElementById(`paso-${index}`);
         if (!element) return;
@@ -229,13 +313,13 @@ export default function GameGuideView({
         element.focus({ preventScroll: true });
       }, 80);
     },
-    [game.walkthrough.length]
+    [game.walkthrough.length, selectTab]
   );
 
   const goToGym = useCallback((index: number) => {
     if (index < 0 || index >= game.gyms.length) return;
 
-    setActiveTab('desafios');
+    selectTab('desafios');
     window.setTimeout(() => {
       const element = document.getElementById(`gym-${index}`);
       if (!element) return;
@@ -248,7 +332,7 @@ export default function GameGuideView({
       window.scrollTo({ top, behavior: reduceMotion ? 'auto' : 'smooth' });
       element.focus({ preventScroll: true });
     }, 60);
-  }, [game.gyms.length]);
+  }, [game.gyms.length, selectTab]);
 
   const handleCompleteAndContinue = (index: number) => {
     if (progressReadOnly) return;
@@ -397,19 +481,35 @@ export default function GameGuideView({
         <section className="mt-5 grid gap-3 sm:grid-cols-3">
           <div className="rounded-2xl bg-white p-4 shadow-sm">
             <p className="text-xs font-bold uppercase tracking-wide text-gray-500">
-              Progreso total
+              Progreso de aventura
             </p>
             <div className="mt-1 flex items-end justify-between">
-              <p className="text-3xl font-black text-gray-900">{loaded ? `${overall}%` : '—'}</p>
+              <p className="text-3xl font-black text-gray-900">
+                {loaded ? `${adventurePercentage}%` : '—'}
+              </p>
               <p className="text-xs text-gray-500">
-                {doneTracked}/{totalTracked}
+                {adventureDone}/{adventureTotal}
               </p>
             </div>
             <div className="mt-2 h-2 overflow-hidden rounded-full bg-gray-200">
               <div
                 className="h-full rounded-full bg-gradient-to-r from-red-500 to-orange-400"
-                style={{ width: `${overall}%` }}
+                style={{ width: `${adventurePercentage}%` }}
               />
+            </div>
+            <div className="mt-2 flex flex-wrap items-center justify-between gap-2">
+              <p className="text-xs text-gray-500">
+                Pasos, insignias y objetivos
+              </p>
+              {user && loaded && (
+                <span
+                  className={`text-[10px] font-bold ${
+                    saving ? 'text-amber-600' : 'text-green-600'
+                  }`}
+                >
+                  {saving ? 'Guardando…' : 'Guardado'}
+                </span>
+              )}
             </div>
           </div>
 
@@ -465,6 +565,7 @@ export default function GameGuideView({
                       <NextChallengePicks
                         challenge={nextChallenge}
                         picks={nextChallengePicks}
+                        gameSlug={game.slug}
                       />
                     )}
                   </>
@@ -526,7 +627,7 @@ export default function GameGuideView({
                 ) : (
                   <button
                     type="button"
-                    onClick={() => setActiveTab('resumen')}
+                    onClick={() => selectTab('resumen')}
                     className="inline-flex items-center gap-1.5 rounded-xl bg-gray-100 px-4 py-2.5 text-sm font-bold text-gray-700 transition hover:bg-gray-200"
                   >
                     Ver checklist
@@ -548,7 +649,7 @@ export default function GameGuideView({
                 id={`tab-${tab.id}`}
                 aria-selected={activeTab === tab.id}
                 aria-controls={`panel-${tab.id}`}
-                onClick={() => setActiveTab(tab.id)}
+                onClick={() => selectTab(tab.id)}
                 className={`whitespace-nowrap rounded-lg px-3 py-2 text-sm font-bold transition focus:outline-none focus-visible:ring-2 focus-visible:ring-red-300 ${
                   activeTab === tab.id
                     ? 'bg-red-600 text-white'
@@ -739,6 +840,7 @@ export default function GameGuideView({
                       <NextChallengePicks
                         challenge={nextChallenge}
                         picks={nextChallengePicks}
+                        gameSlug={game.slug}
                       />
                     )}
                     <p className="mt-2 text-xs font-semibold text-gray-500">
@@ -1045,6 +1147,13 @@ export default function GameGuideView({
                   const challengeDone = progress.checklist.includes(
                     `challenge:${index}`
                   );
+                  const relatedStepIndex = findRelatedStepIndex(
+                    game,
+                    challenge
+                  );
+                  const relatedStepDone =
+                    relatedStepIndex >= 0 &&
+                    isChecked(`step:${relatedStepIndex}`);
 
                   return (
                   <article
@@ -1102,6 +1211,21 @@ export default function GameGuideView({
 
                     <p className="mt-3 text-sm text-gray-600">{challenge.tip}</p>
 
+                    {relatedStepIndex >= 0 && (
+                      <p className="mt-2 text-[11px] font-semibold text-gray-500">
+                        Guía:{' '}
+                        <button
+                          type="button"
+                          onClick={() => goToStep(relatedStepIndex)}
+                          className="font-bold text-red-600 hover:underline"
+                        >
+                          Paso {relatedStepIndex + 1}:{' '}
+                          {game.walkthrough[relatedStepIndex].title}
+                          {relatedStepDone ? ' ✓' : ''}
+                        </button>
+                      </p>
+                    )}
+
                     <div className="mt-3 flex flex-wrap items-center justify-between gap-2 border-t border-gray-100 pt-3">
                       <span
                         className={`inline-flex items-center gap-1 text-xs font-bold ${
@@ -1117,23 +1241,62 @@ export default function GameGuideView({
                           'Pendiente'
                         )}
                       </span>
-                      <button
-                        type="button"
-                        onClick={() =>
-                          toggleChecklist(`challenge:${index}`)
-                        }
-                        disabled={progressReadOnly}
-                        aria-pressed={challengeDone}
-                        className={`rounded-lg px-3 py-1.5 text-xs font-bold transition focus:outline-none focus-visible:ring-2 focus-visible:ring-red-300 disabled:cursor-not-allowed disabled:opacity-60 ${
-                          challengeDone
-                            ? 'bg-green-100 text-green-800 hover:bg-green-200'
-                            : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
-                        }`}
-                      >
-                        {challengeDone
-                          ? 'Desmarcar'
-                          : 'Marcar conseguida'}
-                      </button>
+                      <div className="flex flex-wrap items-center gap-2">
+                        {!challengeDone &&
+                          relatedStepIndex >= 0 &&
+                          !relatedStepDone && (
+                            <button
+                              type="button"
+                              onClick={() =>
+                                setChecklist(
+                                  [
+                                    `challenge:${index}`,
+                                    `step:${relatedStepIndex}`,
+                                  ],
+                                  true
+                                )
+                              }
+                              disabled={progressReadOnly}
+                              className="rounded-lg bg-red-600 px-3 py-1.5 text-xs font-bold text-white transition hover:bg-red-700 focus:outline-none focus-visible:ring-2 focus-visible:ring-red-300 disabled:cursor-not-allowed disabled:opacity-60"
+                            >
+                              Insignia + paso
+                            </button>
+                          )}
+                        {challengeDone &&
+                          relatedStepIndex >= 0 &&
+                          !relatedStepDone && (
+                            <button
+                              type="button"
+                              onClick={() =>
+                                setChecklist(
+                                  [`step:${relatedStepIndex}`],
+                                  true
+                                )
+                              }
+                              disabled={progressReadOnly}
+                              className="rounded-lg bg-gray-100 px-3 py-1.5 text-xs font-bold text-gray-700 transition hover:bg-gray-200 focus:outline-none focus-visible:ring-2 focus-visible:ring-red-300 disabled:cursor-not-allowed disabled:opacity-60"
+                            >
+                              Marcar paso
+                            </button>
+                          )}
+                        <button
+                          type="button"
+                          onClick={() =>
+                            toggleChecklist(`challenge:${index}`)
+                          }
+                          disabled={progressReadOnly}
+                          aria-pressed={challengeDone}
+                          className={`rounded-lg px-3 py-1.5 text-xs font-bold transition focus:outline-none focus-visible:ring-2 focus-visible:ring-red-300 disabled:cursor-not-allowed disabled:opacity-60 ${
+                            challengeDone
+                              ? 'bg-green-100 text-green-800 hover:bg-green-200'
+                              : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
+                          }`}
+                        >
+                          {challengeDone
+                            ? 'Desmarcar'
+                            : 'Marcar insignia'}
+                        </button>
+                      </div>
                     </div>
                   </article>
                   );
@@ -1276,6 +1439,38 @@ export default function GameGuideView({
   );
 }
 
+function normalizeSearchText(value: string): string {
+  return value
+    .normalize('NFD')
+    .replace(/[\u0300-\u036f]/g, '')
+    .toLowerCase();
+}
+
+function findRelatedStepIndex(
+  game: GameGuide,
+  challenge: GameGym
+): number {
+  const needles = [challenge.location, challenge.leader, challenge.badge]
+    .map(normalizeSearchText)
+    .filter((value) => value.length >= 4);
+
+  if (needles.length === 0) return -1;
+
+  const matches = new Set<number>();
+
+  game.walkthrough.forEach((step, index) => {
+    const haystack = normalizeSearchText(
+      `${step.title} ${step.goal} ${step.tips.join(' ')}`
+    );
+
+    if (needles.some((needle) => haystack.includes(needle))) {
+      matches.add(index);
+    }
+  });
+
+  return matches.size === 1 ? Array.from(matches)[0] : -1;
+}
+
 interface CatchPick {
   entry: PokemonIndexEntry;
   types: string[];
@@ -1284,9 +1479,11 @@ interface CatchPick {
 function NextChallengePicks({
   challenge,
   picks,
+  gameSlug,
 }: {
   challenge: GameGym;
   picks: CatchPick[];
+  gameSlug: string;
 }) {
   if (picks.length === 0) return null;
 
@@ -1299,7 +1496,7 @@ function NextChallengePicks({
         {picks.map(({ entry, types }) => (
           <Link
             key={entry.id}
-            href={`/pokedex/${entry.id}`}
+            href={`/pokedex/${entry.id}?game=${encodeURIComponent(gameSlug)}`}
             className="inline-flex items-center gap-1.5 rounded-full bg-gray-100 py-1 pl-1 pr-2.5 text-[11px] font-bold text-gray-700 transition hover:bg-gray-200"
           >
             {/* eslint-disable-next-line @next/next/no-img-element */}

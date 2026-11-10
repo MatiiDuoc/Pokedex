@@ -33,6 +33,7 @@ interface AccountContextValue {
   user: AuthUser | null;
   authLoading: boolean;
   dataLoading: boolean;
+  saving: boolean;
   syncError: string | null;
   registrationOpen: boolean;
   guides: Record<string, GameProgress>;
@@ -114,6 +115,7 @@ export function AccountProvider({ children }: { children: ReactNode }) {
   const [user, setUser] = useState<AuthUser | null>(null);
   const [authLoading, setAuthLoading] = useState(true);
   const [dataLoading, setDataLoading] = useState(false);
+  const [saving, setSaving] = useState(false);
   const [syncError, setSyncError] = useState<string | null>(null);
   const [registrationOpen, setRegistrationOpen] = useState(false);
   const [guides, setGuides] = useState<Record<string, GameProgress>>({});
@@ -154,6 +156,7 @@ export function AccountProvider({ children }: { children: ReactNode }) {
       if (response.status === 401) {
         setUser(null);
         userRef.current = null;
+        setSaving(false);
         setSyncError('Tu sesión ha caducado. Vuelve a iniciar sesión.');
         return false;
       }
@@ -185,6 +188,7 @@ export function AccountProvider({ children }: { children: ReactNode }) {
             keepalive: true,
           });
           pendingRef.current.delete(slug);
+          if (pendingRef.current.size === 0) setSaving(false);
           return true;
         } catch {
           return false;
@@ -193,6 +197,7 @@ export function AccountProvider({ children }: { children: ReactNode }) {
 
       const ok = await persist(slug, data);
       if (ok) pendingRef.current.delete(slug);
+      if (pendingRef.current.size === 0) setSaving(false);
       return ok;
     },
     [persist]
@@ -209,6 +214,7 @@ export function AccountProvider({ children }: { children: ReactNode }) {
   const scheduleSave = useCallback(
     (slug: string, data: GameProgress | PokemonBasic[]) => {
       pendingRef.current.set(slug, data);
+      setSaving(true);
 
       const existing = timersRef.current.get(slug);
       if (existing) clearTimeout(existing);
@@ -225,6 +231,7 @@ export function AccountProvider({ children }: { children: ReactNode }) {
 
   const loadAccount = useCallback(async (currentUser: AuthUser) => {
     setDataLoading(true);
+    setSaving(false);
 
     try {
       const response = await fetch('/api/account', { cache: 'no-store' });
@@ -391,6 +398,7 @@ export function AccountProvider({ children }: { children: ReactNode }) {
     setGuides({});
     setTeam([]);
     setGameTeams({});
+    setSaving(false);
     setSyncError(null);
   }, [flushAll]);
 
@@ -470,6 +478,7 @@ export function AccountProvider({ children }: { children: ReactNode }) {
       setGuides({});
       setTeam([]);
       setGameTeams({});
+      setSaving(false);
       writeCache(userRef.current.id, {
         guides: {},
         team: [],
@@ -503,6 +512,7 @@ export function AccountProvider({ children }: { children: ReactNode }) {
       user,
       authLoading,
       dataLoading,
+      saving,
       syncError,
       registrationOpen,
       guides,
@@ -521,6 +531,7 @@ export function AccountProvider({ children }: { children: ReactNode }) {
       user,
       authLoading,
       dataLoading,
+      saving,
       syncError,
       registrationOpen,
       guides,

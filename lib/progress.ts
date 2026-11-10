@@ -60,6 +60,21 @@ export function useGameProgress(slug: string) {
     [progress, update, user]
   );
 
+  const setChecklist = useCallback(
+    (items: string[], value: boolean) => {
+      if (!user) return;
+
+      const checklist = new Set(progress.checklist);
+      for (const item of items) {
+        if (value) checklist.add(item);
+        else checklist.delete(item);
+      }
+
+      update({ ...progress, checklist: Array.from(checklist) });
+    },
+    [progress, update, user]
+  );
+
   const setNote = useCallback(
     (key: string, value: string) => {
       if (!user) return;
@@ -89,6 +104,7 @@ export function useGameProgress(slug: string) {
     toggleCaught,
     setCaught,
     toggleChecklist,
+    setChecklist,
     setNote,
     reset,
   };
