@@ -20,6 +20,10 @@ checklists por juego, guías paso a paso y visor 3D.
   para reordenar, cobertura ofensiva, debilidades compartidas y sugerencias
   automáticas de Pokémon que cubren los huecos del equipo (pool ampliado a 65
   especies).
+- **Equipo por juego** dentro de cada guía: equipo independiente por juego,
+  búsqueda limitada al Pokédex regional, análisis de debilidades, amenazas
+  concretas del juego, sugerencias de contras y movimientos que puede aprender
+  cada Pokémon en esa versión (nivel, MT/MO, tutor y huevo).
 - **Guías visuales** con mapas SVG ilustrativos de cada región, pines de ruta,
   insignias y un Pokémon representativo del tipo de cada gimnasio.
 - **Modo oscuro** con toggle claro/oscuro, persistencia en localStorage y
@@ -130,8 +134,11 @@ Tablas creadas: `users`, `sessions`, `progress` y `rate_limits`.
 - `GET /api/auth/me` — devuelve el usuario actual.
 - `GET /api/search?q=...` — búsqueda global de Pokémon y guías para el
   autocompletado del inicio.
+- `GET /api/pokemon/[id]` — datos básicos de un Pokémon para añadirlo al equipo.
+- `GET /api/pokemon/[id]/moves?versionGroup=...` — movimientos aprendibles en
+  un juego concreto.
 - `/pokedex/[id]` — ficha completa de cada Pokémon (ISR de 7 días).
-- `/equipo` — Team Builder privado con análisis de tipos.
+- `/equipo` — Team Builder privado global con análisis de tipos.
 - `GET /api/account` — devuelve todas las guías y el equipo del usuario.
 - `PUT /api/account` — guarda `{ slug, data }` (o `__team__` para el equipo).
 - `DELETE /api/account` — borra todo el progreso del usuario.

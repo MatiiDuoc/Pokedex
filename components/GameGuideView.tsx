@@ -3,6 +3,7 @@
 import Link from 'next/link';
 import { useEffect, useState } from 'react';
 import { Award } from 'lucide-react';
+import GameTeamBuilder from './GameTeamBuilder';
 import PokedexChecklist from './PokedexChecklist';
 import RegionRouteMap from './RegionRouteMap';
 import { useAccount } from '@/components/AccountProvider';
@@ -16,14 +17,22 @@ interface GameGuideViewProps {
   game: GameGuide;
   pokemon: PokemonIndexEntry[];
   pokedexLabel: string;
+  versionGroup: string | null;
 }
 
-type TabId = 'resumen' | 'pasos' | 'desafios' | 'pokedex' | 'consejos';
+type TabId =
+  | 'resumen'
+  | 'pasos'
+  | 'desafios'
+  | 'equipo'
+  | 'pokedex'
+  | 'consejos';
 
 export default function GameGuideView({
   game,
   pokemon,
   pokedexLabel,
+  versionGroup,
 }: GameGuideViewProps) {
   const [activeTab, setActiveTab] = useState<TabId>('resumen');
   const { syncError } = useAccount();
@@ -84,7 +93,10 @@ export default function GameGuideView({
     { id: 'pasos', label: 'Paso a paso' },
     { id: 'desafios', label: game.challengeLabel },
     ...(hasPokedex
-      ? [{ id: 'pokedex' as const, label: 'Pokédex' }]
+      ? [
+          { id: 'equipo' as const, label: 'Mi equipo' },
+          { id: 'pokedex' as const, label: 'Pokédex' },
+        ]
       : []),
     { id: 'consejos', label: 'Consejos' },
   ];
@@ -575,6 +587,20 @@ export default function GameGuideView({
                   <p className="mt-1 text-xl font-black">{game.champion}</p>
                 </div>
               )}
+            </section>
+          )}
+
+          {activeTab === 'equipo' && (
+            <section
+              id="panel-equipo"
+              role="tabpanel"
+              aria-labelledby="tab-equipo"
+            >
+              <GameTeamBuilder
+                game={game}
+                pokemon={pokemon}
+                versionGroup={versionGroup}
+              />
             </section>
           )}
 

@@ -14,7 +14,14 @@ export const runtime = 'nodejs';
 export const dynamic = 'force-dynamic';
 
 const TEAM_SLUG = '__team__';
+const GAME_TEAM_PREFIX = '__team__:';
 const MAX_BODY_SIZE = 250_000;
+
+function parseGameTeamSlug(slug: string): string | null {
+  if (!slug.startsWith(GAME_TEAM_PREFIX)) return null;
+  const gameSlug = slug.slice(GAME_TEAM_PREFIX.length);
+  return gamesBySlug.has(gameSlug) ? gameSlug : null;
+}
 
 function parseJsonb(value: unknown): unknown {
   if (typeof value === 'string') {
@@ -60,6 +67,7 @@ export async function GET() {
   `;
 
   const guides: Record<string, GameProgress> = {};
+  const gameTeams: Record<string, PokemonBasic[]> = {};
   let team: PokemonBasic[] = [];
 
   for (const row of rows as Array<{ slug: string; data: unknown }>) {
@@ -70,13 +78,20 @@ export async function GET() {
       continue;
     }
 
+    const gameTeamSlug = parseGameTeamSlug(row.slug);
+    if (gameTeamSlug) {
+      const gameTeam = validateTeamData(parsed);
+      if (gameTeam) gameTeams[gameTeamSlug] = gameTeam;
+      continue;
+    }
+
     if (!gamesBySlug.has(row.slug)) continue;
     const progress = validateProgressData(parsed);
     if (progress) guides[row.slug] = progress;
   }
 
   return NextResponse.json(
-    { guides, team },
+    { guides, team, gameTeams },
     { headers: { 'Cache-Control': 'no-store' } }
   );
 }
@@ -135,6 +150,19 @@ export async function PUT(request: Request) {
       return NextResponse.json({ error: 'Equipo inválido' }, { status: 400 });
     }
     data = team;
+  } else if (body.slug.startsWith(GAME_TEAM_PREFIX)) {
+    const gameTeamSlug = parseGameTeamSlug(body.slug);
+    if (!gameTeamSlug) {
+      return NextResponse.json({ error: 'Juego no encontrado' }, { status: 404 });
+    }
+    const gameTeam = validateTeamData(body.data);
+    if (!gameTeam) {
+      return NextResponse.json(
+        { error: 'Equipo del juego inválido' },
+        { status: 400 }
+      );
+    }
+    data = gameTeam;
   } else {
     if (!gamesBySlug.has(body.slug)) {
       return NextResponse.json({ error: 'Guía no encontrada' }, { status: 404 });

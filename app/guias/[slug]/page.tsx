@@ -46,6 +46,7 @@ export default async function GuidePage({ params }: GuidePageProps) {
       game={game}
       pokemon={pokemon}
       pokedexLabel={versionGroup?.pokedexLabel ?? game.dexScope}
+      versionGroup={versionGroup?.versionGroup ?? null}
     />
   );
 }

@@ -21,6 +21,7 @@ const SAVE_DEBOUNCE_MS = 500;
 interface AccountData {
   guides: Record<string, GameProgress>;
   team: PokemonBasic[];
+  gameTeams: Record<string, PokemonBasic[]>;
 }
 
 interface AuthResult {
@@ -36,11 +37,13 @@ interface AccountContextValue {
   registrationOpen: boolean;
   guides: Record<string, GameProgress>;
   team: PokemonBasic[];
+  gameTeams: Record<string, PokemonBasic[]>;
   login: (username: string, password: string) => Promise<AuthResult>;
   register: (username: string, password: string) => Promise<AuthResult>;
   logout: () => Promise<void>;
   saveGuide: (slug: string, data: GameProgress) => void;
   saveTeam: (team: PokemonBasic[]) => void;
+  saveGameTeam: (gameSlug: string, team: PokemonBasic[]) => void;
   resetAll: () => Promise<AuthResult>;
   refresh: () => Promise<void>;
 }
@@ -72,6 +75,10 @@ function readCache(userId: string): AccountData | null {
     return {
       guides: parsed.guides && typeof parsed.guides === 'object' ? parsed.guides : {},
       team: Array.isArray(parsed.team) ? parsed.team : [],
+      gameTeams:
+        parsed.gameTeams && typeof parsed.gameTeams === 'object'
+          ? parsed.gameTeams
+          : {},
     };
   } catch {
     return null;
@@ -111,10 +118,12 @@ export function AccountProvider({ children }: { children: ReactNode }) {
   const [registrationOpen, setRegistrationOpen] = useState(false);
   const [guides, setGuides] = useState<Record<string, GameProgress>>({});
   const [team, setTeam] = useState<PokemonBasic[]>([]);
+  const [gameTeams, setGameTeams] = useState<Record<string, PokemonBasic[]>>({});
 
   const userRef = useRef<AuthUser | null>(null);
   const guidesRef = useRef<Record<string, GameProgress>>({});
   const teamRef = useRef<PokemonBasic[]>([]);
+  const gameTeamsRef = useRef<Record<string, PokemonBasic[]>>({});
   const pendingRef = useRef(new Map<string, GameProgress | PokemonBasic[]>());
   const timersRef = useRef(new Map<string, ReturnType<typeof setTimeout>>());
 
@@ -129,6 +138,10 @@ export function AccountProvider({ children }: { children: ReactNode }) {
   useEffect(() => {
     teamRef.current = team;
   }, [team]);
+
+  useEffect(() => {
+    gameTeamsRef.current = gameTeams;
+  }, [gameTeams]);
 
   const persist = useCallback(async (slug: string, data: GameProgress | PokemonBasic[]) => {
     try {
@@ -225,11 +238,18 @@ export function AccountProvider({ children }: { children: ReactNode }) {
       if (!response.ok) throw new Error('No se pudo cargar la cuenta');
 
       const data = (await response.json()) as AccountData;
+      const loadedGameTeams =
+        data.gameTeams && typeof data.gameTeams === 'object'
+          ? data.gameTeams
+          : {};
+
       setGuides(data.guides ?? {});
       setTeam(Array.isArray(data.team) ? data.team : []);
+      setGameTeams(loadedGameTeams);
       writeCache(currentUser.id, {
         guides: data.guides ?? {},
         team: Array.isArray(data.team) ? data.team : [],
+        gameTeams: loadedGameTeams,
       });
       setSyncError(null);
     } catch {
@@ -237,6 +257,7 @@ export function AccountProvider({ children }: { children: ReactNode }) {
       if (cached) {
         setGuides(cached.guides);
         setTeam(cached.team);
+        setGameTeams(cached.gameTeams);
         setSyncError('Modo sin conexión: mostrando la última copia guardada.');
       } else {
         setSyncError('No se pudieron cargar tus datos.');
@@ -369,6 +390,7 @@ export function AccountProvider({ children }: { children: ReactNode }) {
     userRef.current = null;
     setGuides({});
     setTeam([]);
+    setGameTeams({});
     setSyncError(null);
   }, [flushAll]);
 
@@ -382,6 +404,7 @@ export function AccountProvider({ children }: { children: ReactNode }) {
         writeCache(userRef.current!.id, {
           guides: next,
           team: teamRef.current,
+          gameTeams: gameTeamsRef.current,
         });
         return next;
       });
@@ -401,9 +424,30 @@ export function AccountProvider({ children }: { children: ReactNode }) {
       writeCache(userRef.current.id, {
         guides: guidesRef.current,
         team: nextTeam,
+        gameTeams: gameTeamsRef.current,
       });
 
       scheduleSave('__team__', nextTeam);
+    },
+    [scheduleSave]
+  );
+
+  const saveGameTeam = useCallback(
+    (gameSlug: string, nextTeam: PokemonBasic[]) => {
+      if (!userRef.current) return;
+
+      setGameTeams((current) => {
+        const next = { ...current, [gameSlug]: nextTeam };
+        gameTeamsRef.current = next;
+        writeCache(userRef.current!.id, {
+          guides: guidesRef.current,
+          team: teamRef.current,
+          gameTeams: next,
+        });
+        return next;
+      });
+
+      scheduleSave(`__team__:${gameSlug}`, nextTeam);
     },
     [scheduleSave]
   );
@@ -425,7 +469,12 @@ export function AccountProvider({ children }: { children: ReactNode }) {
       timersRef.current.clear();
       setGuides({});
       setTeam([]);
-      writeCache(userRef.current.id, { guides: {}, team: [] });
+      setGameTeams({});
+      writeCache(userRef.current.id, {
+        guides: {},
+        team: [],
+        gameTeams: {},
+      });
       return { ok: true };
     } catch {
       return { ok: false, error: 'No se pudo conectar con el servidor.' };
@@ -458,11 +507,13 @@ export function AccountProvider({ children }: { children: ReactNode }) {
       registrationOpen,
       guides,
       team,
+      gameTeams,
       login,
       register,
       logout,
       saveGuide,
       saveTeam,
+      saveGameTeam,
       resetAll,
       refresh,
     }),
@@ -474,11 +525,13 @@ export function AccountProvider({ children }: { children: ReactNode }) {
       registrationOpen,
       guides,
       team,
+      gameTeams,
       login,
       register,
       logout,
       saveGuide,
       saveTeam,
+      saveGameTeam,
       resetAll,
       refresh,
     ]
@@ -543,6 +596,76 @@ export function useTeam(): TeamContextValue {
     if (!user) return;
     saveTeam([]);
   }, [user, saveTeam]);
+
+  return {
+    team,
+    maxSize: MAX_TEAM_SIZE,
+    hydrated,
+    requiresLogin: !user,
+    isFull: team.length >= MAX_TEAM_SIZE,
+    has,
+    add,
+    remove,
+    move,
+    clear,
+  };
+}
+
+export function useGameTeam(gameSlug: string): TeamContextValue {
+  const { user, gameTeams, dataLoading, saveGameTeam } = useAccount();
+  const team = useMemo(
+    () => gameTeams[gameSlug] ?? [],
+    [gameTeams, gameSlug]
+  );
+  const hydrated = !dataLoading;
+
+  const has = useCallback(
+    (id: number) => team.some((pokemon) => pokemon.id === id),
+    [team]
+  );
+
+  const add = useCallback(
+    (pokemon: PokemonBasic): 'added' | 'duplicate' | 'full' | 'auth' | 'loading' => {
+      if (!user) return 'auth';
+      if (dataLoading) return 'loading';
+      if (team.some((entry) => entry.id === pokemon.id)) return 'duplicate';
+      if (team.length >= MAX_TEAM_SIZE) return 'full';
+
+      saveGameTeam(gameSlug, [...team, pokemon]);
+      return 'added';
+    },
+    [user, dataLoading, team, saveGameTeam, gameSlug]
+  );
+
+  const remove = useCallback(
+    (id: number) => {
+      if (!user) return;
+      saveGameTeam(
+        gameSlug,
+        team.filter((pokemon) => pokemon.id !== id)
+      );
+    },
+    [user, team, saveGameTeam, gameSlug]
+  );
+
+  const move = useCallback(
+    (from: number, to: number) => {
+      if (!user) return;
+      if (from === to) return;
+      if (from < 0 || to < 0 || from >= team.length || to >= team.length) return;
+
+      const next = [...team];
+      const [moved] = next.splice(from, 1);
+      next.splice(to, 0, moved);
+      saveGameTeam(gameSlug, next);
+    },
+    [user, team, saveGameTeam, gameSlug]
+  );
+
+  const clear = useCallback(() => {
+    if (!user) return;
+    saveGameTeam(gameSlug, []);
+  }, [user, saveGameTeam, gameSlug]);
 
   return {
     team,
