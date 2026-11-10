@@ -220,6 +220,9 @@ export default function GameGuideView({
   const gymsDone = game.gyms.filter((_, index) =>
     progress.checklist.includes(`challenge:${index}`)
   ).length;
+  const completedGymIndices = game.gyms.flatMap((_, index) =>
+    progress.checklist.includes(`challenge:${index}`) ? [index] : []
+  );
 
   const adventureTotal =
     game.completionChecklist.length + game.walkthrough.length + game.gyms.length;
@@ -1040,9 +1043,20 @@ export default function GameGuideView({
               className="space-y-5"
             >
               <RegionRouteMap
-                locations={game.gyms.map((challenge) => challenge.location)}
+                gyms={game.gyms}
+                completed={completedGymIndices}
                 accent={game.accent}
                 region={game.region}
+                canEdit={!progressReadOnly}
+                nextStepIndex={
+                  nextStepIndex >= 0 ? nextStepIndex : undefined
+                }
+                nextStepTitle={nextStep?.title ?? null}
+                onGoToGym={goToGym}
+                onGoToStep={goToStep}
+                onToggleGym={(index) =>
+                  toggleChecklist(`challenge:${index}`)
+                }
               />
 
               <div className="rounded-2xl bg-white p-5 shadow-sm">

@@ -31,6 +31,11 @@ checklists por juego, guías paso a paso y visor 3D.
   huevo.
 - **Guías visuales** con mapas SVG ilustrativos de cada región, pines de ruta,
   insignias y un Pokémon representativo del tipo de cada gimnasio.
+- **Mapa interactivo 2D** en cada guía: arrastrar, zoom, pantalla completa,
+  marcadores clicables, última parada y siguiente objetivo destacados, ficha del
+  gimnasio y acción para marcar la insignia o saltar al combate.
+- **Mapa del siguiente objetivo**: indica la última insignia, la próxima parada
+  y el paso de la ruta que toca, con enlace directo.
 - **Modo aventura** en cada guía: tarjeta “Tu siguiente paso”, progreso de la
   ruta, selector para saltar a cualquier paso, botón “Hecho y seguir” que
   avanza automáticamente y enlaces profundos `?paso=N`.
@@ -329,7 +334,7 @@ el recurso. El código acepta `DATABASE_URL` o `POSTGRES_URL`.
 - Sustituir el respaldo nacional por listas de obtenibilidad exactas con método
   (ruta, hierba, agua, intercambio, evento, DLC).
 - Traducción completa de nombres de Pokémon al español.
-- Mapas e imágenes en las guías.
+- Mapas geográficos reales con rutas y modo 3D para las guías.
 - Sentry u otro proveedor de errores además de Analytics.
 - Internacionalización con `next-intl`.
 - Más spin-offs: Pokémon GO, UNITE, Detective Pikachu, Rumble, etc.
