@@ -26,6 +26,7 @@ import {
 import { getTeamSuggestions } from '@/lib/team-suggestions';
 import { usePokemonFilters } from '@/lib/usePokemonFilters';
 import {
+  POKEMON_TYPES,
   TYPE_CHART,
   getOffensiveCoverage,
   getTeamWeaknesses,
@@ -266,6 +267,23 @@ export default function GameTeamBuilder({
     ? movesById[expandedMoves]
     : undefined;
 
+  const missingTypes = POKEMON_TYPES.filter(
+    (type) => !coverage.includes(type)
+  );
+
+  const recommendedMoves =
+    expandedMember && expandedMovesState?.status === 'ready'
+      ? expandedMovesState.data.levelUp
+          .filter(
+            (move) =>
+              move.type &&
+              expandedMember.types.includes(move.type) &&
+              move.power !== null
+          )
+          .sort((a, b) => (b.power ?? 0) - (a.power ?? 0))
+          .slice(0, 4)
+      : [];
+
   return (
     <div className="space-y-5">
       <div className="rounded-2xl bg-white p-5 shadow-sm">
@@ -496,6 +514,29 @@ export default function GameTeamBuilder({
                   cubre tu equipo.
                 </p>
 
+                {recommendedMoves.length > 0 && (
+                  <div>
+                    <h4 className="text-xs font-black uppercase tracking-widest text-indigo-900/70">
+                      Ataques recomendados
+                    </h4>
+                    <div className="mt-1 flex flex-wrap gap-1.5">
+                      {recommendedMoves.map((move) => (
+                        <span
+                          key={move.name}
+                          className={`rounded-full px-2 py-1 text-[10px] font-bold text-white ${
+                            move.type
+                              ? TYPE_COLORS[move.type] ?? 'bg-gray-400'
+                              : 'bg-gray-400'
+                          }`}
+                        >
+                          {formatPokemonName(move.name)}
+                          {move.power !== null ? ` · ${move.power}` : ''}
+                        </span>
+                      ))}
+                    </div>
+                  </div>
+                )}
+
                 <div>
                   <h4 className="text-xs font-black uppercase tracking-widest text-indigo-900/70">
                     Por nivel
@@ -542,6 +583,51 @@ export default function GameTeamBuilder({
           </div>
         )}
       </div>
+
+      <section className="rounded-2xl bg-gradient-to-br from-slate-950 via-indigo-950 to-purple-950 p-5 text-white shadow-lg">
+        <h2 className="text-lg font-black">Diagnóstico del equipo</h2>
+        {team.length === 0 ? (
+          <p className="mt-2 text-sm text-white/75">
+            Añade Pokémon para recibir un diagnóstico y recomendaciones.
+          </p>
+        ) : (
+          <ul className="mt-3 space-y-2 text-sm text-white/85">
+            <li>
+              <strong className="text-white">Equipo:</strong> {team.length}/6.
+              {team.length < 6
+                ? ` Te quedan ${6 - team.length} huecos libres.`
+                : ' Equipo completo.'}
+            </li>
+            <li>
+              <strong className="text-white">Mayor debilidad:</strong>{' '}
+              {weaknesses[0]
+                ? `${getTypeName(weaknesses[0].type)} (${weaknesses[0].count} miembro${
+                    weaknesses[0].count === 1 ? '' : 's'
+                  }).`
+                : 'sin debilidades compartidas.'}
+            </li>
+            <li>
+              <strong className="text-white">Cobertura:</strong>{' '}
+              {coverage.length}/18 tipos.
+              {missingTypes.length > 0
+                ? ` Te faltan ${missingTypes
+                    .slice(0, 6)
+                    .map(getTypeName)
+                    .join(', ')}${missingTypes.length > 6 ? '…' : ''}.`
+                : ' Cobertura completa.'}
+            </li>
+            <li>
+              <strong className="text-white">Contras sugeridos:</strong>{' '}
+              {suggestions.length > 0
+                ? suggestions
+                    .slice(0, 3)
+                    .map((candidate) => formatPokemonName(candidate.name))
+                    .join(', ')
+                : 'ninguno por ahora.'}
+            </li>
+          </ul>
+        )}
+      </section>
 
       <div className="grid gap-4 lg:grid-cols-2">
         <section className="rounded-2xl bg-white p-5 shadow-sm">
