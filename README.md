@@ -36,8 +36,11 @@ checklists por juego, guías paso a paso y visor 3D.
   avanza automáticamente y enlaces profundos `?paso=N`.
 - **Notas personales por paso**, guardadas en la cuenta, para recordar objetos,
   compras, guardados o tareas pendientes.
-- **Seguimiento de gimnasios e insignias**: marca cada desafío como conseguido
-  y consulta el progreso de la guía.
+- **Seguimiento de gimnasios e insignias**: marca cada desafío como conseguido,
+  consulta el progreso y ve la **caja de insignias** con la imagen de cada
+  medalla. Las no conseguidas aparecen en gris y las obtenidas se colorean.
+  Incluye insignias de Kanto a Paldea, cristales Z de Alola y visuales de
+  respaldo para rangos y desafíos sin medalla oficial.
 - **Capturas recomendadas para el próximo desafío**, calculadas con los tipos
   del siguiente gimnasio y el Pokédex regional del juego.
 - **Continuar donde lo dejaste** desde el inicio y desde el listado de guías,

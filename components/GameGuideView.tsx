@@ -10,7 +10,6 @@ import {
 } from 'react';
 import {
   ArrowRight,
-  Award,
   CheckCircle2,
   ChevronLeft,
   ChevronRight,
@@ -18,9 +17,11 @@ import {
   NotebookPen,
 } from 'lucide-react';
 import GameTeamBuilder from './GameTeamBuilder';
+import GymBadge from './GymBadge';
 import PokedexChecklist from './PokedexChecklist';
 import RegionRouteMap from './RegionRouteMap';
 import { useAccount } from '@/components/AccountProvider';
+import { getGymBadgeVisual } from '@/lib/gym-badges';
 import { getGymTypeVisual } from '@/lib/gym-visuals';
 import { useGameProgress } from '@/lib/progress';
 import {
@@ -72,6 +73,16 @@ export default function GameGuideView({
   } = useGameProgress(game.slug);
 
   const hasPokedex = (game.pokedexMode ?? 'regional') !== 'none';
+  const badgeCaseTitle =
+    game.slug === 'sun-moon' || game.slug === 'ultra-sun-ultra-moon'
+      ? 'Caja de cristales Z'
+      : game.slug === 'legends-arceus'
+        ? 'Nobles derrotados'
+        : game.slug === 'legends-z-a'
+          ? 'Rangos Z-A'
+          : (game.category ?? 'main') === 'spin-off'
+            ? 'Progreso de desafíos'
+            : 'Caja de insignias';
   const loginHref = `/login?next=${encodeURIComponent(`/guias/${game.slug}`)}`;
   const progressReadOnly = requiresLogin || !loaded;
   const { data: filterData } = usePokemonFilters(hasPokedex && loaded);
@@ -220,6 +231,24 @@ export default function GameGuideView({
     },
     [game.walkthrough.length]
   );
+
+  const goToGym = useCallback((index: number) => {
+    if (index < 0 || index >= game.gyms.length) return;
+
+    setActiveTab('desafios');
+    window.setTimeout(() => {
+      const element = document.getElementById(`gym-${index}`);
+      if (!element) return;
+
+      const reduceMotion = window.matchMedia(
+        '(prefers-reduced-motion: reduce)'
+      ).matches;
+      const top = element.getBoundingClientRect().top + window.scrollY - 120;
+
+      window.scrollTo({ top, behavior: reduceMotion ? 'auto' : 'smooth' });
+      element.focus({ preventScroll: true });
+    }, 60);
+  }, [game.gyms.length]);
 
   const handleCompleteAndContinue = (index: number) => {
     if (progressReadOnly) return;
@@ -938,11 +967,81 @@ export default function GameGuideView({
                     {gymsDone}/{game.gyms.length} completados
                   </span>
                 </div>
+
+                <div className="mt-5 border-t border-gray-200 pt-4">
+                  <div className="flex flex-wrap items-center justify-between gap-2">
+                    <h3 className="text-sm font-black uppercase tracking-widest text-gray-500">
+                      {badgeCaseTitle}
+                    </h3>
+                    <span className="text-xs font-bold text-gray-500">
+                      {gymsDone}/{game.gyms.length}
+                    </span>
+                  </div>
+                  <p className="mt-1 text-xs text-gray-500">
+                    Los visuales se colorean al conseguirlos. Pulsa uno para ir
+                    a su combate.
+                  </p>
+
+                  <div className="mt-3 grid grid-cols-4 gap-2 sm:grid-cols-8">
+                    {game.gyms.map((challenge, index) => {
+                      const challengeDone = progress.checklist.includes(
+                        `challenge:${index}`
+                      );
+                      const badgeVisual = getGymBadgeVisual(
+                        game.slug,
+                        index,
+                        challenge
+                      );
+
+                      return (
+                        <button
+                          key={`badge-${challenge.leader}-${index}`}
+                          type="button"
+                          onClick={() => goToGym(index)}
+                          aria-label={`${challenge.badge}: ${
+                            challengeDone ? 'conseguida' : 'pendiente'
+                          }. Ir al combate contra ${challenge.leader}`}
+                          className={`group flex flex-col items-center gap-1 rounded-xl border px-1 py-2 text-center transition ${
+                            challengeDone
+                              ? 'border-amber-300 bg-amber-50 hover:bg-amber-100'
+                              : 'border-dashed border-gray-200 bg-gray-50 hover:border-red-200 hover:bg-white'
+                          }`}
+                        >
+                          <GymBadge
+                            visual={badgeVisual}
+                            obtained={challengeDone}
+                            size="md"
+                            showLock={!challengeDone}
+                          />
+                          <span className="w-full truncate text-[10px] font-bold text-gray-700">
+                            {challenge.leader}
+                          </span>
+                          <span
+                            className={`w-full truncate text-[9px] font-semibold ${
+                              challengeDone
+                                ? 'text-amber-700'
+                                : 'text-gray-400'
+                            }`}
+                          >
+                            {challengeDone
+                              ? 'Conseguida'
+                              : challenge.badge}
+                          </span>
+                        </button>
+                      );
+                    })}
+                  </div>
+                </div>
               </div>
 
               <div className="grid gap-4 md:grid-cols-2">
                 {game.gyms.map((challenge, index) => {
                   const visual = getGymTypeVisual(challenge.type);
+                  const badgeVisual = getGymBadgeVisual(
+                    game.slug,
+                    index,
+                    challenge
+                  );
                   const challengeDone = progress.checklist.includes(
                     `challenge:${index}`
                   );
@@ -950,7 +1049,11 @@ export default function GameGuideView({
                   return (
                   <article
                     key={`${challenge.leader}-${index}`}
-                    className="rounded-2xl bg-white p-5 shadow-sm"
+                    id={`gym-${index}`}
+                    tabIndex={-1}
+                    className={`scroll-mt-24 rounded-2xl border bg-white p-5 shadow-sm outline-none ${
+                      challengeDone ? 'border-amber-200' : 'border-transparent'
+                    }`}
                   >
                     <div className="flex items-start justify-between gap-3">
                       <div className="flex items-center gap-3">
@@ -975,10 +1078,16 @@ export default function GameGuideView({
                           </p>
                         </div>
                       </div>
-                      <span className="inline-flex items-center gap-1 rounded-full bg-gray-100 px-2.5 py-1 text-xs font-bold text-gray-700">
-                        <Award className="h-3 w-3" />
-                        {challenge.badge}
-                      </span>
+                      <div className="flex items-center gap-1.5">
+                        <GymBadge
+                          visual={badgeVisual}
+                          obtained={challengeDone}
+                          size="sm"
+                        />
+                        <span className="inline-flex items-center rounded-full bg-gray-100 px-2.5 py-1 text-xs font-bold text-gray-700">
+                          {challenge.badge}
+                        </span>
+                      </div>
                     </div>
 
                     <div className="mt-3 flex items-center gap-2">
