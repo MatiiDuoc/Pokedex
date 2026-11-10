@@ -90,8 +90,14 @@ checklists por juego, guías paso a paso y visor 3D.
   imagen oficial si el modelo no está disponible.
 - **Búsqueda global** de Pokémon y guías, con filtros por tipo, generación y
   categoría.
+- **Buscador de la Pokédex con autocompletado**: al escribir aparecen
+  sugerencias con imagen, nombre, número y generación; la primera coincide con
+  una vista previa destacada. Se puede navegar con teclado.
+- **Filtros de la Pokédex en la URL** (`?q=`, `?type=`, `?gen=`, `?shiny=`…),
+  compartibles y persistentes al recargar.
 - **PWA offline**: las páginas visitadas se guardan en caché y hay una página
-  `/offline`. Los cambios de progreso requieren conexión.
+  `/offline`. Los cambios de progreso pendientes se guardan en una cola local y
+  se sincronizan al recuperar la conexión, incluso tras recargar.
 - **Seguridad**: scrypt para contraseñas, tokens de sesión hasheados, cookies
   httpOnly/SameSite, comprobación de origen, rate limiting en Postgres y
   cabeceras CSP/HSTS.
@@ -273,6 +279,9 @@ npm run data:versions
 - El service worker solo se registra en producción.
 - Las llamadas a `/api/*` nunca se cachean: login y progreso siempre van a la
   red.
+- Los cambios que no se pueden guardar se conservan en
+  `pokedex:pending:<usuario>` dentro de `localStorage` y se reintentan al
+  recuperar la conexión o al volver a abrir la app.
 - Al cambiar la versión de la app, actualiza `VERSION` en `public/sw.js`.
 
 ## Despliegue en Vercel
@@ -321,8 +330,6 @@ el recurso. El código acepta `DATABASE_URL` o `POSTGRES_URL`.
   (ruta, hierba, agua, intercambio, evento, DLC).
 - Traducción completa de nombres de Pokémon al español.
 - Mapas e imágenes en las guías.
-- Cola de sincronización offline con IndexedDB para editar progreso sin
-  conexión.
 - Sentry u otro proveedor de errores además de Analytics.
 - Internacionalización con `next-intl`.
 - Más spin-offs: Pokémon GO, UNITE, Detective Pikachu, Rumble, etc.

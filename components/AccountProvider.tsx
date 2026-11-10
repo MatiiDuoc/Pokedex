@@ -16,7 +16,11 @@ import type { PokemonBasic } from '@/types/pokemon';
 
 const MAX_TEAM_SIZE = 6;
 const CACHE_PREFIX = 'pokedex:cache:';
+const PENDING_PREFIX = 'pokedex:pending:';
 const SAVE_DEBOUNCE_MS = 500;
+const GAME_TEAM_PREFIX = '__team__:';
+
+type PendingSave = GameProgress | PokemonBasic[];
 
 interface AccountData {
   guides: Record<string, GameProgress>;
@@ -102,6 +106,84 @@ function clearCache(userId: string): void {
   }
 }
 
+function pendingKey(userId: string): string {
+  return `${PENDING_PREFIX}${userId}`;
+}
+
+function readPending(userId: string): Record<string, PendingSave> | null {
+  try {
+    const raw = window.localStorage.getItem(pendingKey(userId));
+    if (!raw) return null;
+
+    const parsed = JSON.parse(raw) as Record<string, unknown>;
+    if (!parsed || typeof parsed !== 'object' || Array.isArray(parsed)) {
+      return null;
+    }
+
+    const pending: Record<string, PendingSave> = {};
+
+    for (const [slug, value] of Object.entries(parsed)) {
+      if (slug === '__team__' || slug.startsWith(GAME_TEAM_PREFIX)) {
+        if (Array.isArray(value)) pending[slug] = value as PokemonBasic[];
+      } else if (value && typeof value === 'object' && !Array.isArray(value)) {
+        pending[slug] = value as GameProgress;
+      }
+    }
+
+    return Object.keys(pending).length > 0 ? pending : null;
+  } catch {
+    return null;
+  }
+}
+
+function writePending(
+  userId: string,
+  pending: Map<string, PendingSave>
+): void {
+  try {
+    if (pending.size === 0) {
+      window.localStorage.removeItem(pendingKey(userId));
+      return;
+    }
+
+    window.localStorage.setItem(
+      pendingKey(userId),
+      JSON.stringify(Object.fromEntries(pending))
+    );
+  } catch {
+    // Sin espacio o localStorage bloqueado.
+  }
+}
+
+function clearPending(userId: string): void {
+  try {
+    window.localStorage.removeItem(pendingKey(userId));
+  } catch {
+    // Ignorar.
+  }
+}
+
+function mergePendingData(
+  base: AccountData,
+  pending: Record<string, PendingSave>
+): AccountData {
+  const guides = { ...base.guides };
+  let team = base.team;
+  const gameTeams = { ...base.gameTeams };
+
+  for (const [slug, value] of Object.entries(pending)) {
+    if (slug === '__team__') {
+      team = value as PokemonBasic[];
+    } else if (slug.startsWith(GAME_TEAM_PREFIX)) {
+      gameTeams[slug.slice(GAME_TEAM_PREFIX.length)] = value as PokemonBasic[];
+    } else {
+      guides[slug] = value as GameProgress;
+    }
+  }
+
+  return { guides, team, gameTeams };
+}
+
 async function readErrorMessage(response: Response): Promise<string> {
   try {
     const data = (await response.json()) as { error?: string };
@@ -126,7 +208,7 @@ export function AccountProvider({ children }: { children: ReactNode }) {
   const guidesRef = useRef<Record<string, GameProgress>>({});
   const teamRef = useRef<PokemonBasic[]>([]);
   const gameTeamsRef = useRef<Record<string, PokemonBasic[]>>({});
-  const pendingRef = useRef(new Map<string, GameProgress | PokemonBasic[]>());
+  const pendingRef = useRef(new Map<string, PendingSave>());
   const timersRef = useRef(new Map<string, ReturnType<typeof setTimeout>>());
 
   useEffect(() => {
@@ -188,6 +270,13 @@ export function AccountProvider({ children }: { children: ReactNode }) {
             keepalive: true,
           });
           pendingRef.current.delete(slug);
+          if (userRef.current) {
+            if (pendingRef.current.size === 0) {
+              clearPending(userRef.current.id);
+            } else {
+              writePending(userRef.current.id, pendingRef.current);
+            }
+          }
           if (pendingRef.current.size === 0) setSaving(false);
           return true;
         } catch {
@@ -197,6 +286,13 @@ export function AccountProvider({ children }: { children: ReactNode }) {
 
       const ok = await persist(slug, data);
       if (ok) pendingRef.current.delete(slug);
+      if (userRef.current) {
+        if (pendingRef.current.size === 0) {
+          clearPending(userRef.current.id);
+        } else {
+          writePending(userRef.current.id, pendingRef.current);
+        }
+      }
       if (pendingRef.current.size === 0) setSaving(false);
       return ok;
     },
@@ -212,9 +308,12 @@ export function AccountProvider({ children }: { children: ReactNode }) {
   );
 
   const scheduleSave = useCallback(
-    (slug: string, data: GameProgress | PokemonBasic[]) => {
+    (slug: string, data: PendingSave) => {
       pendingRef.current.set(slug, data);
       setSaving(true);
+      if (userRef.current) {
+        writePending(userRef.current.id, pendingRef.current);
+      }
 
       const existing = timersRef.current.get(slug);
       if (existing) clearTimeout(existing);
@@ -249,22 +348,42 @@ export function AccountProvider({ children }: { children: ReactNode }) {
         data.gameTeams && typeof data.gameTeams === 'object'
           ? data.gameTeams
           : {};
-
-      setGuides(data.guides ?? {});
-      setTeam(Array.isArray(data.team) ? data.team : []);
-      setGameTeams(loadedGameTeams);
-      writeCache(currentUser.id, {
+      const base: AccountData = {
         guides: data.guides ?? {},
         team: Array.isArray(data.team) ? data.team : [],
         gameTeams: loadedGameTeams,
-      });
+      };
+      const pending = readPending(currentUser.id);
+      const merged = pending ? mergePendingData(base, pending) : base;
+
+      if (pending) {
+        pendingRef.current = new Map(Object.entries(pending));
+        setSaving(true);
+      }
+
+      setGuides(merged.guides);
+      setTeam(merged.team);
+      setGameTeams(merged.gameTeams);
+      writeCache(currentUser.id, merged);
       setSyncError(null);
+
+      if (pending) {
+        void flushAll();
+      }
     } catch {
       const cached = readCache(currentUser.id);
       if (cached) {
-        setGuides(cached.guides);
-        setTeam(cached.team);
-        setGameTeams(cached.gameTeams);
+        const pending = readPending(currentUser.id);
+        const merged = pending ? mergePendingData(cached, pending) : cached;
+
+        if (pending) {
+          pendingRef.current = new Map(Object.entries(pending));
+          setSaving(true);
+        }
+
+        setGuides(merged.guides);
+        setTeam(merged.team);
+        setGameTeams(merged.gameTeams);
         setSyncError('Modo sin conexión: mostrando la última copia guardada.');
       } else {
         setSyncError('No se pudieron cargar tus datos.');
@@ -272,7 +391,7 @@ export function AccountProvider({ children }: { children: ReactNode }) {
     } finally {
       setDataLoading(false);
     }
-  }, []);
+  }, [flushAll]);
 
   useEffect(() => {
     let cancelled = false;
@@ -475,6 +594,7 @@ export function AccountProvider({ children }: { children: ReactNode }) {
       pendingRef.current.clear();
       timersRef.current.forEach((timer) => clearTimeout(timer));
       timersRef.current.clear();
+      clearPending(userRef.current.id);
       setGuides({});
       setTeam([]);
       setGameTeams({});
