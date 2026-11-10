@@ -9,6 +9,7 @@ import {
 import {
   Check,
   Compass,
+  Layers,
   MapPin,
   Maximize2,
   Minimize2,
@@ -69,6 +70,7 @@ export default function RegionRouteMap({
   const [selectedIndex, setSelectedIndex] = useState<number | null>(null);
   const [isDragging, setIsDragging] = useState(false);
   const [isFullscreen, setIsFullscreen] = useState(false);
+  const [is3D, setIs3D] = useState(false);
   const mapRef = useRef<HTMLDivElement>(null);
   const dragRef = useRef<{
     startX: number;
@@ -116,6 +118,12 @@ export default function RegionRouteMap({
     setScale((current) => clamp(Number((current - 0.25).toFixed(2)), 1, 2.5));
 
   const resetView = () => {
+    setScale(1);
+    setOffset({ x: 0, y: 0 });
+  };
+
+  const toggle3D = () => {
+    setIs3D((current) => !current);
     setScale(1);
     setOffset({ x: 0, y: 0 });
   };
@@ -194,7 +202,8 @@ export default function RegionRouteMap({
             </h2>
             <p className="mt-1 max-w-2xl text-sm text-white/75">
               Arrastra para mover, usa los controles para acercar y toca una
-              parada para ver el líder, la insignia y tu próximo objetivo.
+              parada para ver el líder, la insignia y tu próximo objetivo. El
+              botón de capas cambia entre vista 2D y diorama 3D.
             </p>
           </div>
           <Compass className="h-8 w-8 text-white/40" aria-hidden="true" />
@@ -246,31 +255,101 @@ export default function RegionRouteMap({
           onPointerMove={handlePointerMove}
           onPointerUp={endDrag}
           onPointerCancel={endDrag}
-          className={`relative mt-4 touch-none overflow-hidden rounded-xl border border-white/15 bg-white/5 ${
+          className={`relative mt-4 touch-none overflow-hidden rounded-xl border border-white/20 bg-gradient-to-br from-slate-950 via-cyan-950 to-blue-950 ${
             isFullscreen
               ? 'h-[calc(100vh-2rem)]'
               : 'h-80 sm:h-96'
           } ${isDragging ? 'cursor-grabbing' : 'cursor-grab'}`}
+          style={{ perspective: is3D ? '1100px' : undefined }}
         >
+          <div
+            className="pointer-events-none absolute inset-0 opacity-30"
+            style={{
+              backgroundImage:
+                'radial-gradient(circle at 1px 1px, rgba(255,255,255,0.35) 1px, transparent 0)',
+              backgroundSize: '22px 22px',
+            }}
+          />
+          <div className="pointer-events-none absolute -left-10 top-8 h-24 w-40 rounded-full bg-white/10 blur-2xl" />
+          <div className="pointer-events-none absolute -right-8 bottom-10 h-28 w-44 rounded-full bg-cyan-300/10 blur-2xl" />
+
           <div
             className="absolute inset-0 origin-center"
             style={{
-              transform: `translate(${offset.x}px, ${offset.y}px) scale(${scale})`,
+              transform: is3D
+                ? `translate(${offset.x}px, ${offset.y}px) scale(${scale}) rotateX(46deg) rotateZ(-10deg) scale(0.8)`
+                : `translate(${offset.x}px, ${offset.y}px) scale(${scale})`,
+              transformStyle: is3D ? 'preserve-3d' : undefined,
             }}
           >
+            {is3D && (
+              <>
+                <div
+                  className="absolute inset-x-[12%] top-[55%] h-12 rounded-full bg-black/60 blur-2xl"
+                  style={{ transform: 'translateZ(-28px)' }}
+                />
+                {[10, 7, 4].map((depth) => (
+                  <div
+                    key={`map-depth-${depth}`}
+                    className="absolute inset-0"
+                    style={{ transform: `translateZ(-${depth}px)` }}
+                  >
+                    <svg
+                      viewBox="0 0 100 100"
+                      preserveAspectRatio="none"
+                      className="h-full w-full"
+                      aria-hidden="true"
+                    >
+                      {regionMap.paths.map((path, index) => (
+                        <path
+                          key={`depth-path-${depth}-${index}`}
+                          d={path}
+                          fill="#064e3b"
+                          stroke="#065f46"
+                          strokeWidth="0.8"
+                        />
+                      ))}
+                      {regionMap.circles?.map((circle, index) => (
+                        <circle
+                          key={`depth-island-${depth}-${index}`}
+                          cx={circle.cx}
+                          cy={circle.cy}
+                          r={circle.r}
+                          fill="#064e3b"
+                          stroke="#065f46"
+                          strokeWidth="0.8"
+                        />
+                      ))}
+                    </svg>
+                  </div>
+                ))}
+              </>
+            )}
+
             <svg
               viewBox="0 0 100 100"
               preserveAspectRatio="none"
               className="absolute inset-0 h-full w-full"
               aria-hidden="true"
+              style={{
+                filter: is3D
+                  ? 'drop-shadow(0 6px 6px rgba(0,0,0,0.45))'
+                  : undefined,
+              }}
             >
+              <defs>
+                <linearGradient id="map-land" x1="0" y1="0" x2="1" y2="1">
+                  <stop offset="0%" stopColor="#34d399" stopOpacity="0.55" />
+                  <stop offset="100%" stopColor="#0f766e" stopOpacity="0.32" />
+                </linearGradient>
+              </defs>
               {regionMap.paths.map((path, index) => (
                 <path
                   key={`region-path-${index}`}
                   d={path}
-                  fill="rgba(255,255,255,0.13)"
-                  stroke="rgba(255,255,255,0.35)"
-                  strokeWidth="0.5"
+                  fill="url(#map-land)"
+                  stroke="rgba(167,243,208,0.7)"
+                  strokeWidth="0.55"
                 />
               ))}
 
@@ -280,9 +359,9 @@ export default function RegionRouteMap({
                   cx={circle.cx}
                   cy={circle.cy}
                   r={circle.r}
-                  fill="rgba(255,255,255,0.13)"
-                  stroke="rgba(255,255,255,0.35)"
-                  strokeWidth="0.5"
+                  fill="url(#map-land)"
+                  stroke="rgba(167,243,208,0.7)"
+                  strokeWidth="0.55"
                 />
               ))}
 
@@ -354,14 +433,14 @@ export default function RegionRouteMap({
                   className="group absolute z-10 -translate-x-1/2 -translate-y-1/2 focus:outline-none"
                   style={{ left: `${point.x}%`, top: `${point.y}%` }}
                 >
-                  <span
-                    className={`flex flex-col items-center transition ${
-                      isNext ? 'animate-pulse' : ''
-                    }`}
-                  >
+                  <span className="flex flex-col items-center transition">
                     <span
                       className={`flex h-8 w-8 items-center justify-center rounded-full border-2 text-[11px] font-black shadow-lg group-focus-visible:ring-4 group-focus-visible:ring-white/60 ${
                         isActive ? 'ring-4 ring-white/55' : ''
+                      } ${
+                        isNext
+                          ? 'shadow-[0_0_0_6px_rgba(251,191,36,0.28)]'
+                          : ''
                       } ${
                         done
                           ? 'border-green-200 bg-green-500 text-white'
@@ -375,7 +454,9 @@ export default function RegionRouteMap({
                       {done ? <Check className="h-4 w-4" /> : index + 1}
                     </span>
                     <span
-                      className={`mt-1 hidden max-w-[110px] truncate rounded px-1.5 py-0.5 text-[9px] font-bold shadow-sm sm:block ${
+                      className={`mt-1 max-w-[110px] truncate rounded px-1.5 py-0.5 text-[9px] font-bold shadow-sm ${
+                        is3D ? 'hidden' : 'hidden sm:block'
+                      } ${
                         isNext
                           ? 'bg-amber-300 text-amber-950'
                           : done
@@ -399,6 +480,21 @@ export default function RegionRouteMap({
             className="absolute right-2 top-2 z-20 flex flex-col gap-1 rounded-xl border border-white/20 bg-slate-950/60 p-1 backdrop-blur"
             onPointerDown={(event) => event.stopPropagation()}
           >
+            <button
+              type="button"
+              onClick={toggle3D}
+              aria-label={
+                is3D ? 'Ver mapa en 2D' : 'Ver mapa en 3D'
+              }
+              title={is3D ? 'Vista 2D' : 'Vista diorama 3D'}
+              className={`rounded-lg p-2 transition ${
+                is3D
+                  ? 'bg-amber-300 text-amber-950 hover:bg-amber-200'
+                  : 'text-white hover:bg-white/15'
+              }`}
+            >
+              <Layers className="h-4 w-4" />
+            </button>
             <button
               type="button"
               onClick={zoomIn}
@@ -442,7 +538,8 @@ export default function RegionRouteMap({
           </div>
 
           <span className="pointer-events-none absolute bottom-2 left-2 rounded-full bg-black/30 px-2 py-0.5 text-[9px] font-bold uppercase tracking-widest text-white/70">
-            Arrastra para mover · {Math.round(scale * 100)}%
+            {is3D ? 'Diorama 3D' : 'Vista 2D'} · Arrastra para mover ·{' '}
+            {Math.round(scale * 100)}%
           </span>
         </div>
 
