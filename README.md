@@ -31,6 +31,11 @@ checklists por juego, guías paso a paso y visor 3D.
   huevo.
 - **Guías visuales** con mapas SVG ilustrativos de cada región, pines de ruta,
   insignias y un Pokémon representativo del tipo de cada gimnasio.
+- **Modo aventura** en cada guía: tarjeta “Tu siguiente paso”, progreso de la
+  ruta, selector para saltar a cualquier paso, botón “Hecho y seguir” que
+  avanza automáticamente y enlaces profundos `?paso=N`.
+- **Continuar donde lo dejaste** desde el inicio y desde el listado de guías,
+  con progreso por guía y acceso directo al siguiente paso pendiente.
 - **Modo oscuro** con toggle claro/oscuro, persistencia en localStorage,
   respeto a la preferencia del sistema y una capa de compatibilidad que adapta
   fondos, textos, bordes y degradados de toda la interfaz.

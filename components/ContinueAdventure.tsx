@@ -11,6 +11,9 @@ interface LastGuide {
   region: string;
   accent: string;
   checklistTotal: number;
+  stepsTotal?: number;
+  nextStep?: number;
+  nextStepTitle?: string | null;
   updatedAt: number;
 }
 
@@ -48,6 +51,12 @@ function readLastGuide(): LastGuide | null {
           ? parsed.accent
           : 'from-red-600 to-orange-500',
       checklistTotal: parsed.checklistTotal,
+      stepsTotal:
+        typeof parsed.stepsTotal === 'number' ? parsed.stepsTotal : 0,
+      nextStep:
+        typeof parsed.nextStep === 'number' ? parsed.nextStep : undefined,
+      nextStepTitle:
+        typeof parsed.nextStepTitle === 'string' ? parsed.nextStepTitle : null,
       updatedAt: typeof parsed.updatedAt === 'number' ? parsed.updatedAt : 0,
     };
   } catch {
@@ -118,9 +127,26 @@ export default function ContinueAdventure({
   }
 
   const progress = guides[lastGuide.slug];
-  const done = progress?.checklist.length ?? 0;
-  const total = Math.max(1, lastGuide.checklistTotal);
+  const checklistDone =
+    progress?.checklist.filter((item) => !item.startsWith('step:')).length ?? 0;
+  const stepsDone =
+    progress?.checklist.filter((item) => item.startsWith('step:')).length ?? 0;
+  const done = checklistDone + stepsDone;
+  const total = Math.max(
+    1,
+    lastGuide.checklistTotal + (lastGuide.stepsTotal ?? 0)
+  );
   const percentage = Math.min(100, Math.round((done / total) * 100));
+  const nextStepNumber =
+    typeof lastGuide.nextStep === 'number' && lastGuide.nextStep >= 0
+      ? lastGuide.nextStep
+      : null;
+  const hasNextStep = nextStepNumber !== null;
+  const continuePath =
+    nextStepNumber !== null
+      ? `/guias/${lastGuide.slug}?paso=${nextStepNumber}`
+      : `/guias/${lastGuide.slug}`;
+  const loginHref = `/login?next=${encodeURIComponent(continuePath)}`;
 
   return (
     <section className="mx-auto max-w-7xl px-4">
@@ -135,9 +161,22 @@ export default function ContinueAdventure({
             </p>
             <h2 className="mt-1 truncate text-2xl font-black">{lastGuide.title}</h2>
             <p className="mt-1 text-sm text-white/80">
-              {lastGuide.region} · {done} de {lastGuide.checklistTotal} objetivos
+              {lastGuide.region} · {done} de {total} objetivos y pasos
               completados
             </p>
+            {lastGuide.nextStepTitle && hasNextStep && (
+              <p className="mt-1 text-xs font-bold text-white/85">
+                Siguiente: {lastGuide.nextStepTitle}
+              </p>
+            )}
+            {lastGuide.stepsTotal !== undefined &&
+              lastGuide.stepsTotal > 0 &&
+              !hasNextStep && (
+                <p className="mt-1 text-xs font-bold text-white/85">
+                  Ruta completada. Te quedan {Math.max(0, total - done)}{' '}
+                  objetivos por revisar.
+                </p>
+              )}
 
             <div className="mt-4 h-2.5 w-full max-w-md overflow-hidden rounded-full bg-black/20">
               <div
@@ -152,10 +191,13 @@ export default function ContinueAdventure({
             {user ? (
               <>
                 <Link
-                  href={`/guias/${lastGuide.slug}`}
+                  href={continuePath}
                   className="inline-flex items-center justify-center gap-2 rounded-xl bg-white px-5 py-3 text-center text-sm font-black text-gray-900 shadow-md transition hover:bg-white/90"
                 >
-                  <Play className="h-4 w-4" /> Continuar guía
+                  <Play className="h-4 w-4" />
+                  {nextStepNumber !== null
+                    ? `Continuar en el paso ${nextStepNumber + 1}`
+                    : 'Continuar guía'}
                 </Link>
                 {dataLoading && (
                   <span className="text-center text-xs font-semibold text-white/70">
@@ -166,13 +208,13 @@ export default function ContinueAdventure({
             ) : (
               <>
                 <Link
-                  href={`/login?next=${encodeURIComponent(`/guias/${lastGuide.slug}`)}`}
+                  href={loginHref}
                   className="inline-flex items-center justify-center gap-2 rounded-xl bg-white px-5 py-3 text-center text-sm font-black text-gray-900 shadow-md transition hover:bg-white/90"
                 >
                   <LogIn className="h-4 w-4" /> Iniciar sesión para guardar
                 </Link>
                 <Link
-                  href={`/guias/${lastGuide.slug}`}
+                  href={continuePath}
                   className="inline-flex items-center justify-center gap-2 rounded-xl border border-white/30 px-5 py-2.5 text-center text-xs font-bold text-white/90 transition hover:bg-white/10"
                 >
                   <BookOpen className="h-4 w-4" /> Leer guía sin cuenta

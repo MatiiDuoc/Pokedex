@@ -2,6 +2,7 @@
 
 import Link from 'next/link';
 import { useDeferredValue, useMemo, useState } from 'react';
+import { useAccount } from '@/components/AccountProvider';
 import { getVersionGroupInfo } from '@/data/versionGroups';
 import type { GameGuide } from '@/types/game';
 
@@ -12,6 +13,7 @@ interface GameGuideListProps {
 type CategoryFilter = 'all' | 'main' | 'spin-off';
 
 export default function GameGuideList({ games }: GameGuideListProps) {
+  const { user, guides } = useAccount();
   const [query, setQuery] = useState('');
   const [generation, setGeneration] = useState('');
   const [region, setRegion] = useState('');
@@ -196,10 +198,34 @@ export default function GameGuideList({ games }: GameGuideListProps) {
           </div>
         ) : (
           <div className="grid gap-5 sm:grid-cols-2 lg:grid-cols-3">
-            {filtered.map((game) => (
+            {filtered.map((game) => {
+              const checkedKeys = guides[game.slug]?.checklist ?? [];
+              const stepsDone = checkedKeys.filter((key) =>
+                key.startsWith('step:')
+              ).length;
+              const checklistDone = game.completionChecklist.filter((item) =>
+                checkedKeys.includes(item)
+              ).length;
+              const totalProgress =
+                game.walkthrough.length + game.completionChecklist.length;
+              const doneProgress = stepsDone + checklistDone;
+              const progressPercentage =
+                totalProgress === 0
+                  ? 0
+                  : Math.round((doneProgress / totalProgress) * 100);
+              const nextStep = game.walkthrough.findIndex(
+                (_, index) => !checkedKeys.includes(`step:${index}`)
+              );
+              const hasProgress = Boolean(user && doneProgress > 0);
+              const href =
+                hasProgress && nextStep >= 0
+                  ? `/guias/${game.slug}?paso=${nextStep}`
+                  : `/guias/${game.slug}`;
+
+              return (
               <Link
                 key={game.slug}
-                href={`/guias/${game.slug}`}
+                href={href}
                 className="group overflow-hidden rounded-2xl bg-white shadow-md transition hover:-translate-y-1 hover:shadow-xl focus:outline-none focus-visible:ring-4 focus-visible:ring-red-200"
               >
                 <div className={`h-2 bg-gradient-to-r ${game.accent}`} />
@@ -245,13 +271,35 @@ export default function GameGuideList({ games }: GameGuideListProps) {
                     Iniciales: {game.starters.join(', ')}
                   </p>
 
+                  {hasProgress && (
+                    <div className="mt-3">
+                      <div className="flex items-center justify-between gap-2 text-[10px] font-bold uppercase tracking-wide text-gray-500">
+                        <span>{progressPercentage}% completado</span>
+                        <span>
+                          {doneProgress}/{totalProgress}
+                        </span>
+                      </div>
+                      <div className="mt-1 h-1.5 overflow-hidden rounded-full bg-gray-200">
+                        <div
+                          className="h-full rounded-full bg-gradient-to-r from-red-500 to-orange-400"
+                          style={{ width: `${progressPercentage}%` }}
+                        />
+                      </div>
+                    </div>
+                  )}
+
                   <span className="mt-4 inline-flex items-center gap-1 text-sm font-bold text-red-600">
-                    Abrir guía
+                    {hasProgress
+                      ? nextStep >= 0
+                        ? `Continuar en el paso ${nextStep + 1}`
+                        : 'Repasar guía'
+                      : 'Abrir guía'}
                     <span aria-hidden="true">→</span>
                   </span>
                 </div>
               </Link>
-            ))}
+              );
+            })}
           </div>
         )}
       </div>

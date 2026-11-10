@@ -1,8 +1,15 @@
 'use client';
 
 import Link from 'next/link';
-import { useEffect, useState } from 'react';
-import { Award } from 'lucide-react';
+import { useCallback, useEffect, useRef, useState } from 'react';
+import {
+  ArrowRight,
+  Award,
+  CheckCircle2,
+  ChevronLeft,
+  ChevronRight,
+  Compass,
+} from 'lucide-react';
 import GameTeamBuilder from './GameTeamBuilder';
 import PokedexChecklist from './PokedexChecklist';
 import RegionRouteMap from './RegionRouteMap';
@@ -35,6 +42,7 @@ export default function GameGuideView({
   versionGroup,
 }: GameGuideViewProps) {
   const [activeTab, setActiveTab] = useState<TabId>('resumen');
+  const appliedDeepLink = useRef(false);
   const { syncError } = useAccount();
   const {
     progress,
@@ -52,6 +60,13 @@ export default function GameGuideView({
   const progressReadOnly = requiresLogin || !loaded;
 
   useEffect(() => {
+    const nextStep = game.walkthrough.findIndex(
+      (_, index) => !progress.checklist.includes(`step:${index}`)
+    );
+    const completedSteps = game.walkthrough.filter((_, index) =>
+      progress.checklist.includes(`step:${index}`)
+    ).length;
+
     try {
       window.localStorage.setItem(
         'pokedex:last-guide',
@@ -61,6 +76,10 @@ export default function GameGuideView({
           region: game.region,
           accent: game.accent,
           checklistTotal: game.completionChecklist.length,
+          stepsTotal: game.walkthrough.length,
+          stepsDone: completedSteps,
+          nextStep,
+          nextStepTitle: nextStep >= 0 ? game.walkthrough[nextStep].title : null,
           updatedAt: Date.now(),
         })
       );
@@ -73,6 +92,8 @@ export default function GameGuideView({
     game.region,
     game.accent,
     game.completionChecklist.length,
+    game.walkthrough,
+    progress.checklist,
   ]);
 
   const checklistDone = game.completionChecklist.filter((item) =>
@@ -87,6 +108,65 @@ export default function GameGuideView({
     game.completionChecklist.length + game.walkthrough.length + pokemon.length;
   const doneTracked = checklistDone + stepsDone + dexDone;
   const overall = totalTracked === 0 ? 0 : Math.round((doneTracked / totalTracked) * 100);
+  const nextStepIndex = game.walkthrough.findIndex(
+    (_, index) => !progress.checklist.includes(`step:${index}`)
+  );
+  const nextStep = nextStepIndex >= 0 ? game.walkthrough[nextStepIndex] : null;
+  const stepsPercentage =
+    game.walkthrough.length === 0
+      ? 0
+      : Math.round((stepsDone / game.walkthrough.length) * 100);
+
+  const goToStep = useCallback(
+    (index: number) => {
+      if (index < 0 || index >= game.walkthrough.length) return;
+
+      setActiveTab('pasos');
+      window.setTimeout(() => {
+        const element = document.getElementById(`paso-${index}`);
+        if (!element) return;
+
+        const reduceMotion = window.matchMedia(
+          '(prefers-reduced-motion: reduce)'
+        ).matches;
+        const top = element.getBoundingClientRect().top + window.scrollY - 120;
+
+        window.scrollTo({
+          top,
+          behavior: reduceMotion ? 'auto' : 'smooth',
+        });
+        element.focus({ preventScroll: true });
+      }, 80);
+    },
+    [game.walkthrough.length]
+  );
+
+  const handleCompleteAndContinue = (index: number) => {
+    if (progressReadOnly) return;
+
+    const key = `step:${index}`;
+    if (!isChecked(key)) toggleChecklist(key);
+
+    let next = -1;
+
+    for (let cursor = index + 1; cursor < game.walkthrough.length; cursor += 1) {
+      if (!isChecked(`step:${cursor}`)) {
+        next = cursor;
+        break;
+      }
+    }
+
+    if (next === -1) {
+      for (let cursor = 0; cursor < index; cursor += 1) {
+        if (!isChecked(`step:${cursor}`)) {
+          next = cursor;
+          break;
+        }
+      }
+    }
+
+    if (next >= 0) goToStep(next);
+  };
 
   const tabs: Array<{ id: TabId; label: string }> = [
     { id: 'resumen', label: 'Resumen' },
@@ -107,6 +187,26 @@ export default function GameGuideView({
     );
     if (confirmed) reset();
   };
+
+  useEffect(() => {
+    if (!loaded || appliedDeepLink.current) return;
+    appliedDeepLink.current = true;
+
+    const params = new URLSearchParams(window.location.search);
+    const rawStep = params.get('paso');
+    if (rawStep === null) return;
+
+    const index = Number.parseInt(rawStep, 10);
+    if (
+      !Number.isInteger(index) ||
+      index < 0 ||
+      index >= game.walkthrough.length
+    ) {
+      return;
+    }
+
+    window.setTimeout(() => goToStep(index), 0);
+  }, [loaded, game.walkthrough.length, goToStep]);
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-slate-50 via-white to-red-50 px-4 py-8">
@@ -230,6 +330,93 @@ export default function GameGuideView({
             </p>
           </div>
         </section>
+
+        {loaded && game.walkthrough.length > 0 && activeTab !== 'pasos' && (
+          <section className="mt-5 rounded-2xl border border-gray-200 bg-white p-5 shadow-sm">
+            <div className="flex flex-wrap items-center justify-between gap-4">
+              <div className="min-w-0 flex-1">
+                <p className="inline-flex items-center gap-1.5 text-xs font-black uppercase tracking-widest text-red-600">
+                  <Compass className="h-4 w-4" />
+                  {nextStep ? 'Tu siguiente paso' : 'Ruta completada'}
+                </p>
+                {nextStep ? (
+                  <>
+                    <h2 className="mt-1 text-xl font-black text-gray-900">
+                      {nextStepIndex + 1}. {nextStep.title}
+                    </h2>
+                    <p className="mt-1 max-w-3xl text-sm text-gray-600">
+                      {nextStep.goal}
+                    </p>
+                  </>
+                ) : (
+                  <>
+                    <h2 className="mt-1 text-xl font-black text-gray-900">
+                      ¡Has completado todos los pasos!
+                    </h2>
+                    <p className="mt-1 text-sm text-gray-600">
+                      Repasa la checklist y el Pokédex para terminar los
+                      objetivos restantes.
+                    </p>
+                  </>
+                )}
+
+                <div className="mt-3 flex flex-wrap items-center gap-2">
+                  <div className="h-2 w-40 overflow-hidden rounded-full bg-gray-200">
+                    <div
+                      className="h-full rounded-full bg-gradient-to-r from-red-500 to-orange-400"
+                      style={{ width: `${stepsPercentage}%` }}
+                    />
+                  </div>
+                  <span className="text-xs font-bold text-gray-500">
+                    {stepsDone}/{game.walkthrough.length} pasos
+                  </span>
+                </div>
+              </div>
+
+              <div className="flex flex-wrap gap-2">
+                {nextStep ? (
+                  <>
+                    <button
+                      type="button"
+                      onClick={() => goToStep(nextStepIndex)}
+                      className="inline-flex items-center gap-1.5 rounded-xl bg-gray-100 px-4 py-2.5 text-sm font-bold text-gray-700 transition hover:bg-gray-200"
+                    >
+                      Ver paso
+                      <ArrowRight className="h-4 w-4" />
+                    </button>
+                    {!progressReadOnly && (
+                      <button
+                        type="button"
+                        onClick={() => handleCompleteAndContinue(nextStepIndex)}
+                        className="inline-flex items-center gap-1.5 rounded-xl bg-red-600 px-4 py-2.5 text-sm font-bold text-white transition hover:bg-red-700"
+                      >
+                        <CheckCircle2 className="h-4 w-4" />
+                        Marcar y seguir
+                      </button>
+                    )}
+                    {requiresLogin && (
+                      <Link
+                        href={loginHref}
+                        className="inline-flex items-center rounded-xl bg-blue-600 px-4 py-2.5 text-sm font-bold text-white transition hover:bg-blue-700"
+                      >
+                        Iniciar sesión para guardar
+                      </Link>
+                    )}
+                  </>
+                ) : (
+                  <button
+                    type="button"
+                    onClick={() => setActiveTab('resumen')}
+                    className="inline-flex items-center gap-1.5 rounded-xl bg-gray-100 px-4 py-2.5 text-sm font-bold text-gray-700 transition hover:bg-gray-200"
+                  >
+                    Ver checklist
+                    <ArrowRight className="h-4 w-4" />
+                  </button>
+                )}
+              </div>
+            </div>
+          </section>
+        )}
 
         <div className="sticky top-16 z-20 mt-5 -mx-4 border-y border-gray-200 bg-white/95 px-4 backdrop-blur">
           <div className="mx-auto flex max-w-6xl gap-1 overflow-x-auto py-2" role="tablist" aria-label="Secciones de la guía">
@@ -409,11 +596,65 @@ export default function GameGuideView({
               aria-labelledby="tab-pasos"
             >
               <div className="mb-4 rounded-2xl bg-white p-5 shadow-sm">
-                <h2 className="text-xl font-black text-gray-900">Ruta paso a paso</h2>
-                <p className="mt-1 text-sm text-gray-600">
-                  Marca cada paso cuando lo completes. Tu progreso se guarda en
-                  este navegador.
-                </p>
+                <div className="flex flex-wrap items-start justify-between gap-3">
+                  <div>
+                    <p className="inline-flex items-center gap-1.5 text-xs font-black uppercase tracking-widest text-red-600">
+                      <Compass className="h-4 w-4" />
+                      Modo aventura
+                    </p>
+                    <h2 className="mt-1 text-xl font-black text-gray-900">
+                      {nextStep ? `Ahora: ${nextStep.title}` : 'Ruta completada'}
+                    </h2>
+                    <p className="mt-1 max-w-2xl text-sm text-gray-600">
+                      {nextStep
+                        ? nextStep.goal
+                        : 'Has completado todos los pasos. Revisa la checklist y el Pokédex para terminar el 100%.'}
+                    </p>
+                    <p className="mt-2 text-xs font-semibold text-gray-500">
+                      {requiresLogin
+                        ? 'Inicia sesión para guardar tu avance.'
+                        : 'Tu progreso se guarda en tu cuenta.'}
+                    </p>
+                  </div>
+                  <div className="rounded-xl bg-gray-50 px-4 py-2 text-center">
+                    <p className="text-2xl font-black text-gray-900">
+                      {stepsDone}/{game.walkthrough.length}
+                    </p>
+                    <p className="text-[10px] font-bold uppercase tracking-wide text-gray-500">
+                      pasos
+                    </p>
+                  </div>
+                </div>
+
+                <div
+                  className="mt-4 flex flex-wrap gap-1.5"
+                  aria-label="Ir directamente a un paso"
+                >
+                  {game.walkthrough.map((step, index) => {
+                    const stepChecked = isChecked(`step:${index}`);
+                    const isNext = index === nextStepIndex;
+
+                    return (
+                      <button
+                        key={`jump-${step.title}`}
+                        type="button"
+                        onClick={() => goToStep(index)}
+                        aria-current={isNext ? 'step' : undefined}
+                        aria-label={`Ir al paso ${index + 1}: ${step.title}`}
+                        title={step.title}
+                        className={`flex h-8 min-w-8 items-center justify-center rounded-lg px-2 text-xs font-black transition ${
+                          stepChecked
+                            ? 'bg-green-100 text-green-800 hover:bg-green-200'
+                            : isNext
+                              ? 'bg-red-600 text-white'
+                              : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
+                        }`}
+                      >
+                        {stepChecked ? '✓' : index + 1}
+                      </button>
+                    );
+                  })}
+                </div>
               </div>
 
               <ol className="space-y-4">
@@ -424,8 +665,17 @@ export default function GameGuideView({
                   return (
                     <li
                       key={step.title}
-                      className={`rounded-2xl border bg-white p-5 shadow-sm ${
-                        checked ? 'border-green-200' : 'border-gray-200'
+                      id={`paso-${index}`}
+                      tabIndex={-1}
+                      aria-current={
+                        index === nextStepIndex ? 'step' : undefined
+                      }
+                      className={`scroll-mt-24 rounded-2xl border bg-white p-5 shadow-sm outline-none transition ${
+                        checked
+                          ? 'border-green-200'
+                          : index === nextStepIndex
+                            ? 'border-red-300 ring-2 ring-red-100'
+                            : 'border-gray-200'
                       }`}
                     >
                       <div className="flex items-start gap-4">
@@ -440,22 +690,43 @@ export default function GameGuideView({
                         </span>
                         <div className="flex-1">
                           <div className="flex flex-wrap items-start justify-between gap-2">
-                            <h3 className="text-lg font-bold text-gray-900">
-                              {step.title}
-                            </h3>
-                            <button
-                              type="button"
-                              onClick={() => toggleChecklist(key)}
-                              aria-pressed={checked}
-                              disabled={progressReadOnly}
-                              className={`rounded-lg px-3 py-1.5 text-xs font-bold transition focus:outline-none focus-visible:ring-2 focus-visible:ring-red-300 disabled:cursor-not-allowed disabled:opacity-60 ${
-                                checked
-                                  ? 'bg-green-100 text-green-800'
-                                  : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
-                              }`}
-                            >
-                              {checked ? 'Completado' : 'Marcar paso'}
-                            </button>
+                            <div className="flex flex-wrap items-center gap-2">
+                              <h3 className="text-lg font-bold text-gray-900">
+                                {step.title}
+                              </h3>
+                              {!checked && index === nextStepIndex && (
+                                <span className="rounded-full bg-red-100 px-2 py-0.5 text-[10px] font-black uppercase tracking-wide text-red-700">
+                                  Siguiente
+                                </span>
+                              )}
+                            </div>
+                            <div className="flex flex-wrap gap-2">
+                              {!checked &&
+                                !progressReadOnly &&
+                                index === nextStepIndex && (
+                                <button
+                                  type="button"
+                                  onClick={() => handleCompleteAndContinue(index)}
+                                  className="inline-flex items-center gap-1 rounded-lg bg-red-600 px-3 py-1.5 text-xs font-bold text-white transition hover:bg-red-700 focus:outline-none focus-visible:ring-2 focus-visible:ring-red-300"
+                                >
+                                  <CheckCircle2 className="h-3.5 w-3.5" />
+                                  Hecho y seguir
+                                </button>
+                              )}
+                              <button
+                                type="button"
+                                onClick={() => toggleChecklist(key)}
+                                aria-pressed={checked}
+                                disabled={progressReadOnly}
+                                className={`rounded-lg px-3 py-1.5 text-xs font-bold transition focus:outline-none focus-visible:ring-2 focus-visible:ring-red-300 disabled:cursor-not-allowed disabled:opacity-60 ${
+                                  checked
+                                    ? 'bg-green-100 text-green-800'
+                                    : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
+                                }`}
+                              >
+                                {checked ? 'Completado' : 'Marcar paso'}
+                              </button>
+                            </div>
                           </div>
                           <p className="mt-1 text-sm text-gray-600">{step.goal}</p>
                           <ul className="mt-3 space-y-1.5">
@@ -469,6 +740,27 @@ export default function GameGuideView({
                             ))}
                           </ul>
                         </div>
+                      </div>
+
+                      <div className="mt-4 flex flex-wrap items-center justify-between gap-2 border-t border-gray-100 pt-3">
+                        <button
+                          type="button"
+                          onClick={() => goToStep(index - 1)}
+                          disabled={index === 0}
+                          className="inline-flex items-center gap-1 rounded-lg px-2.5 py-1.5 text-xs font-bold text-gray-600 transition hover:bg-gray-100 disabled:cursor-not-allowed disabled:opacity-40"
+                        >
+                          <ChevronLeft className="h-3.5 w-3.5" />
+                          Paso anterior
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => goToStep(index + 1)}
+                          disabled={index === game.walkthrough.length - 1}
+                          className="inline-flex items-center gap-1 rounded-lg px-2.5 py-1.5 text-xs font-bold text-gray-600 transition hover:bg-gray-100 disabled:cursor-not-allowed disabled:opacity-40"
+                        >
+                          Siguiente paso
+                          <ChevronRight className="h-3.5 w-3.5" />
+                        </button>
                       </div>
                     </li>
                   );
