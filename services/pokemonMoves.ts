@@ -1,6 +1,9 @@
+import moveNamesEs from '@/lib/move-names-es.json';
+
 const POKEAPI_BASE = 'https://pokeapi.co/api/v2';
 const REVALIDATE_SECONDS = 60 * 60 * 24 * 7;
 const TIMEOUT_MS = 20_000;
+const MOVE_NAMES_ES = moveNamesEs as Record<string, string>;
 
 interface NamedResource {
   name: string;
@@ -30,6 +33,7 @@ export type MoveMethod = 'level-up' | 'machine' | 'tutor' | 'egg';
 
 export interface LearnedMove {
   name: string;
+  displayName: string;
   level: number | null;
   method: MoveMethod;
   type: string | null;
@@ -115,6 +119,7 @@ export async function getPokemonMoves(
 
       const move: LearnedMove = {
         name: entry.move.name,
+        displayName: MOVE_NAMES_ES[entry.move.name] ?? entry.move.name,
         level: method === 'level-up' ? detail.level_learned_at : null,
         method,
         type: null,
@@ -142,13 +147,15 @@ export async function getPokemonMoves(
       move.accuracy = detail.accuracy;
     }
 
+    const bySpanishName = (a: LearnedMove, b: LearnedMove) =>
+      a.displayName.localeCompare(b.displayName, 'es');
+
     levelUp.sort(
-      (a, b) =>
-        (a.level ?? 0) - (b.level ?? 0) || a.name.localeCompare(b.name)
+      (a, b) => (a.level ?? 0) - (b.level ?? 0) || bySpanishName(a, b)
     );
-    machine.sort((a, b) => a.name.localeCompare(b.name));
-    tutor.sort((a, b) => a.name.localeCompare(b.name));
-    egg.sort((a, b) => a.name.localeCompare(b.name));
+    machine.sort(bySpanishName);
+    tutor.sort(bySpanishName);
+    egg.sort(bySpanishName);
 
     return { levelUp, machine, tutor, egg };
   })();

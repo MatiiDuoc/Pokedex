@@ -15,7 +15,9 @@
     "users:create": "node --env-file=.env.local scripts/user-admin.mjs create",
     "users:password": "node --env-file=.env.local scripts/user-admin.mjs password",
     "users:delete": "node --env-file=.env.local scripts/user-admin.mjs delete",
-    "data:filters": "node scripts/generate-pokemon-filters.mjs"
+    "data:filters": "node scripts/generate-pokemon-filters.mjs",
+    "data:moves": "node scripts/generate-move-names.mjs",
+    "data:versions": "node scripts/generate-version-names.mjs"
   },
   "dependencies": {
     "@neondatabase/serverless": "^1.2.0",

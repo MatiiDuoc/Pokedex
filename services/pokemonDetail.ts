@@ -4,12 +4,14 @@ import {
   getIdFromResourceUrl,
   getShinyArtworkUrl,
 } from '@/services/pokeapi';
+import moveNamesEs from '@/lib/move-names-es.json';
 import {
   getGenerationFromId,
   getLegendaryCategory,
 } from '@/lib/pokemon';
 import type { LegendaryCategory, PokemonStat } from '@/types/pokemon';
 
+const MOVE_NAMES_ES = moveNamesEs as Record<string, string>;
 const POKEAPI_BASE = 'https://pokeapi.co/api/v2';
 const REVALIDATE_SECONDS = 60 * 60 * 24 * 7;
 const TIMEOUT_MS = 20_000;
@@ -135,7 +137,12 @@ function getEvolutionMethod(details: EvolutionDetail[]): string | null {
   if (detail.held_item) return `Con ${detail.held_item.name.replace(/-/g, ' ')}`;
   if (detail.trigger.name === 'trade') return 'Intercambio';
   if (detail.trigger.name === 'use-item') return 'Usar objeto';
-  if (detail.known_move) return `Conocer ${detail.known_move.name.replace(/-/g, ' ')}`;
+  if (detail.known_move) {
+    const moveName =
+      MOVE_NAMES_ES[detail.known_move.name] ??
+      detail.known_move.name.replace(/-/g, ' ');
+    return `Conocer ${moveName}`;
+  }
   if (detail.location) return `En ${detail.location.name.replace(/-/g, ' ')}`;
   if (detail.trigger.name === 'level-up') return 'Subir de nivel';
   if (detail.trigger.name !== 'level-up') {

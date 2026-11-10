@@ -3,10 +3,12 @@
 import Link from 'next/link';
 import { useMemo, useState } from 'react';
 import {
+  Award,
   BookOpen,
   Check,
   ChevronDown,
   ChevronUp,
+  Download,
   GripVertical,
   Loader2,
   Plus,
@@ -18,22 +20,27 @@ import {
   Users,
 } from 'lucide-react';
 import { useAccount, useGameTeam } from '@/components/AccountProvider';
+import { getGymTypeVisual } from '@/lib/gym-visuals';
 import {
+  SPANISH_TYPE_TO_KEY,
   TYPE_COLORS,
   formatPokemonName,
   getTypeLabel,
 } from '@/lib/pokemon';
+import { downloadTeamImage, type TeamImageTheme } from '@/lib/team-image';
 import { getTeamSuggestions } from '@/lib/team-suggestions';
 import { usePokemonFilters } from '@/lib/usePokemonFilters';
 import {
   POKEMON_TYPES,
   TYPE_CHART,
+  getDefensiveMatchups,
   getOffensiveCoverage,
   getTeamWeaknesses,
   getTypeName,
   isPokemonType,
+  type PokemonType,
 } from '@/lib/type-chart';
-import type { GameGuide } from '@/types/game';
+import type { GameGym, GameGuide } from '@/types/game';
 import type { PokemonBasic, PokemonIndexEntry } from '@/types/pokemon';
 import type {
   LearnedMove,
@@ -53,6 +60,18 @@ type MoveState =
 
 interface DexEntryWithTypes extends PokemonIndexEntry {
   types: string[];
+}
+
+interface GymPreparation {
+  gym: GameGym;
+  gymTypes: PokemonType[];
+  attackTypes: PokemonType[];
+  advantages: PokemonBasic[];
+  disadvantages: PokemonBasic[];
+  neutral: PokemonBasic[];
+  score: number;
+  candidates: Array<DexEntryWithTypes & { gymScore: number }>;
+  visual: ReturnType<typeof getGymTypeVisual>;
 }
 
 const TYPE_ICONS: Record<string, string> = {
@@ -77,6 +96,9 @@ export default function GameTeamBuilder({
   const [draggedIndex, setDraggedIndex] = useState<number | null>(null);
   const [expandedMoves, setExpandedMoves] = useState<number | null>(null);
   const [movesById, setMovesById] = useState<Record<number, MoveState>>({});
+  const [exportTheme, setExportTheme] = useState<TeamImageTheme>('dark');
+  const [exporting, setExporting] = useState(false);
+  const [exportMessage, setExportMessage] = useState<string | null>(null);
 
   const filterMap = useMemo(
     () => new Map((filterData ?? []).map((entry) => [entry.id, entry])),
@@ -143,6 +165,117 @@ export default function GameTeamBuilder({
       )
       .slice(0, 12);
   }, [pokemon, query]);
+
+  const challenges = useMemo<GameGym[]>(() => {
+    return [
+      ...game.gyms,
+      ...game.eliteFour.map((member) => ({
+        leader: member.name,
+        type: member.type,
+        badge: game.eliteFourLabel,
+        location: 'Liga Pokémon',
+        tip: 'Miembro del Alto Mando.',
+      })),
+    ];
+  }, [game.gyms, game.eliteFour, game.eliteFourLabel]);
+
+  const gymPreparations = useMemo<GymPreparation[]>(() => {
+    const teamSet = new Set(teamIds);
+
+    return challenges
+      .map((gym) => {
+        const gymTypes = gym.type
+          .split('/')
+          .map((part) => SPANISH_TYPE_TO_KEY[part.trim().toLowerCase()])
+          .filter(isPokemonType);
+
+        if (gymTypes.length === 0) return null;
+
+        const attackTypes = POKEMON_TYPES.filter((attackingType) =>
+          gymTypes.some(
+            (gymType) => (TYPE_CHART[attackingType][gymType] ?? 1) > 1
+          )
+        );
+
+        const advantages: PokemonBasic[] = [];
+        const disadvantages: PokemonBasic[] = [];
+        const neutral: PokemonBasic[] = [];
+
+        for (const member of team) {
+          const matchups = getDefensiveMatchups(member.types);
+          const resistCount = gymTypes.filter(
+            (gymType) =>
+              matchups.resistances.some((entry) => entry.type === gymType) ||
+              matchups.immunities.some((entry) => entry.type === gymType)
+          ).length;
+          const weakCount = gymTypes.filter((gymType) =>
+            matchups.weaknesses.some((entry) => entry.type === gymType)
+          ).length;
+          const offensiveCount = member.types.filter(
+            (type) =>
+              isPokemonType(type) &&
+              gymTypes.some(
+                (gymType) => (TYPE_CHART[type][gymType] ?? 1) > 1
+              )
+          ).length;
+          const defensiveScore = resistCount - weakCount;
+
+          if (
+            defensiveScore > 0 ||
+            (defensiveScore === 0 && offensiveCount > 0)
+          ) {
+            advantages.push(member);
+          } else if (defensiveScore < 0) {
+            disadvantages.push(member);
+          } else {
+            neutral.push(member);
+          }
+        }
+
+        const score =
+          team.length === 0
+            ? 0
+            : Math.round(
+                ((advantages.length * 2 + neutral.length) /
+                  (team.length * 2)) *
+                  100
+              );
+
+        const candidates = dexPool
+          .filter((candidate) => !teamSet.has(candidate.id))
+          .map((candidate) => {
+            const matchups = getDefensiveMatchups(candidate.types);
+            const resistsGym = gymTypes.some(
+              (gymType) =>
+                matchups.resistances.some((entry) => entry.type === gymType) ||
+                matchups.immunities.some((entry) => entry.type === gymType)
+            );
+            const hasAttackType = candidate.types.some((type) =>
+              attackTypes.includes(type as PokemonType)
+            );
+            return {
+              ...candidate,
+              gymScore: (resistsGym ? 2 : 0) + (hasAttackType ? 1 : 0),
+            };
+          })
+          .filter((candidate) => candidate.gymScore > 0)
+          .sort((a, b) => b.gymScore - a.gymScore || a.id - b.id)
+          .slice(0, 2);
+
+        return {
+          gym,
+          gymTypes,
+          attackTypes,
+          advantages,
+          disadvantages,
+          neutral,
+          score,
+          candidates,
+          visual: getGymTypeVisual(gym.type),
+        };
+      })
+      .filter((entry): entry is GymPreparation => entry !== null);
+  }, [challenges, team, teamIds, dexPool]);
 
   const addPokemon = async (entry: PokemonIndexEntry) => {
     if (teamState.isFull) {
@@ -224,6 +357,26 @@ export default function GameTeamBuilder({
     void loadMoves(member);
   };
 
+  const handleExport = async () => {
+    if (!user) return;
+    if (team.length === 0) {
+      setExportMessage('Añade al menos un Pokémon para exportar el equipo.');
+      return;
+    }
+
+    setExporting(true);
+    setExportMessage(null);
+
+    try {
+      await downloadTeamImage(team, user.displayName, { theme: exportTheme });
+      setExportMessage('Imagen del equipo descargada.');
+    } catch {
+      setExportMessage('No se pudo exportar la imagen. Inténtalo de nuevo.');
+    } finally {
+      setExporting(false);
+    }
+  };
+
   if (authLoading) {
     return (
       <div className="rounded-2xl bg-white p-6 shadow-sm">
@@ -300,7 +453,7 @@ export default function GameTeamBuilder({
               {weaknesses.length} debilidades compartidas
             </p>
           </div>
-          <div className="flex flex-wrap gap-2">
+          <div className="flex flex-wrap items-center gap-2">
             <Link
               href="/pokedex"
               className="rounded-lg bg-gray-100 px-3 py-2 text-xs font-bold text-gray-700 transition hover:bg-gray-200"
@@ -313,8 +466,42 @@ export default function GameTeamBuilder({
             >
               Team Builder global
             </Link>
+            <label htmlFor={`game-team-export-theme-${game.slug}`} className="sr-only">
+              Tema de la imagen del equipo
+            </label>
+            <select
+              id={`game-team-export-theme-${game.slug}`}
+              value={exportTheme}
+              onChange={(event) =>
+                setExportTheme(event.target.value as TeamImageTheme)
+              }
+              className="rounded-lg border border-gray-300 bg-white px-2 py-2 text-xs font-bold text-gray-700 focus:border-red-500 focus:outline-none focus:ring-2 focus:ring-red-200"
+            >
+              <option value="dark">Imagen oscura</option>
+              <option value="light">Imagen clara</option>
+              <option value="shiny">Imagen shiny</option>
+            </select>
+            <button
+              type="button"
+              onClick={() => void handleExport()}
+              disabled={exporting || team.length === 0}
+              className="inline-flex items-center gap-1.5 rounded-lg bg-red-600 px-3 py-2 text-xs font-bold text-white transition hover:bg-red-700 disabled:cursor-not-allowed disabled:bg-gray-300"
+            >
+              {exporting ? (
+                <Loader2 className="h-3.5 w-3.5 animate-spin" />
+              ) : (
+                <Download className="h-3.5 w-3.5" />
+              )}
+              Exportar equipo
+            </button>
           </div>
         </div>
+
+        {exportMessage && (
+          <p role="status" className="mt-2 text-xs font-semibold text-gray-500">
+            {exportMessage}
+          </p>
+        )}
 
         <div className="mt-4">
           <label htmlFor={`game-team-search-${game.slug}`} className="sr-only">
@@ -529,7 +716,7 @@ export default function GameTeamBuilder({
                               : 'bg-gray-400'
                           }`}
                         >
-                          {formatPokemonName(move.name)}
+                          {move.displayName}
                           {move.power !== null ? ` · ${move.power}` : ''}
                         </span>
                       ))}
@@ -752,6 +939,181 @@ export default function GameTeamBuilder({
 
       <section className="rounded-2xl bg-white p-5 shadow-sm">
         <h2 className="flex items-center gap-2 text-lg font-black text-gray-900">
+          <Award className="h-5 w-5 text-amber-600" />
+          Preparación contra gimnasios y Alto Mando
+        </h2>
+        <p className="mt-1 text-sm text-gray-600">
+          Puntuación de tu equipo frente a cada desafío de {game.shortTitle},
+          con ventajas, desventajas y Pokémon recomendados para añadir.
+        </p>
+
+        {challenges.length === 0 ? (
+          <p className="mt-3 text-sm text-gray-400">
+            Este juego no tiene gimnasios registrados en la guía.
+          </p>
+        ) : team.length === 0 ? (
+          <p className="mt-3 text-sm text-gray-400">
+            Añade Pokémon al equipo para calcular la preparación de cada
+            combate.
+          </p>
+        ) : (
+          <div className="mt-3 grid gap-3 lg:grid-cols-2">
+            {gymPreparations.map((prep, index) => {
+              const scoreTone =
+                prep.score >= 67
+                  ? 'bg-green-500'
+                  : prep.score >= 34
+                    ? 'bg-amber-500'
+                    : 'bg-red-500';
+
+              return (
+                <article
+                  key={`${prep.gym.leader}-${prep.gym.type}-${index}`}
+                  className="rounded-xl border border-gray-200 bg-gray-50 p-3"
+                >
+                  <div className="flex items-start gap-3">
+                    {prep.visual ? (
+                      /* eslint-disable-next-line @next/next/no-img-element */
+                      <img
+                        src={prep.visual.artworkUrl}
+                        alt={prep.visual.name}
+                        loading="lazy"
+                        className="h-14 w-14 flex-none object-contain"
+                      />
+                    ) : (
+                      <div className="flex h-14 w-14 flex-none items-center justify-center rounded-xl bg-gray-200">
+                        <Award className="h-6 w-6 text-gray-500" />
+                      </div>
+                    )}
+                    <div className="min-w-0 flex-1">
+                      <div className="flex flex-wrap items-center justify-between gap-2">
+                        <p className="truncate text-sm font-black text-gray-900">
+                          {prep.gym.leader}
+                        </p>
+                        <span className="rounded-full bg-white px-2 py-0.5 text-[10px] font-bold text-gray-600">
+                          {prep.score}% listo
+                        </span>
+                      </div>
+                      <p className="text-[11px] font-semibold text-gray-500">
+                        {prep.gym.location} · {prep.gym.badge}
+                      </p>
+                      <div className="mt-1 flex flex-wrap gap-1">
+                        {prep.gymTypes.map((type) => (
+                          <span
+                            key={type}
+                            className={`rounded-full px-1.5 py-0.5 text-[9px] font-bold uppercase text-white ${
+                              TYPE_COLORS[type] ?? 'bg-gray-400'
+                            }`}
+                          >
+                            {getTypeLabel(type)}
+                          </span>
+                        ))}
+                      </div>
+                    </div>
+                  </div>
+
+                  <div className="mt-2 h-1.5 overflow-hidden rounded-full bg-gray-200">
+                    <div
+                      className={`h-full rounded-full ${scoreTone}`}
+                      style={{ width: `${prep.score}%` }}
+                    />
+                  </div>
+
+                  <p className="mt-2 text-[11px] text-gray-600">
+                    <strong className="text-gray-900">Ventaja:</strong>{' '}
+                    {prep.advantages.length > 0
+                      ? prep.advantages
+                          .map((member) => formatPokemonName(member.name))
+                          .join(', ')
+                      : 'ninguno'}
+                  </p>
+                  <p className="mt-1 text-[11px] text-gray-600">
+                    <strong className="text-gray-900">Riesgo:</strong>{' '}
+                    {prep.disadvantages.length > 0
+                      ? prep.disadvantages
+                          .map((member) => formatPokemonName(member.name))
+                          .join(', ')
+                      : 'ninguno'}
+                  </p>
+
+                  <div className="mt-2">
+                    <p className="text-[10px] font-black uppercase tracking-widest text-gray-500">
+                      Ataques útiles
+                    </p>
+                    <div className="mt-1 flex flex-wrap gap-1">
+                      {prep.attackTypes.map((type) => (
+                        <span
+                          key={type}
+                          className={`rounded-full px-1.5 py-0.5 text-[9px] font-bold uppercase text-white ${
+                            TYPE_COLORS[type] ?? 'bg-gray-400'
+                          }`}
+                        >
+                          {getTypeLabel(type)}
+                        </span>
+                      ))}
+                    </div>
+                  </div>
+
+                  {prep.candidates.length > 0 && (
+                    <div className="mt-2 border-t border-gray-200 pt-2">
+                      <p className="text-[10px] font-black uppercase tracking-widest text-gray-500">
+                        Recomendados para este combate
+                      </p>
+                      <div className="mt-1 space-y-1.5">
+                        {prep.candidates.map((candidate) => {
+                          const alreadyInTeam = teamState.has(candidate.id);
+                          const disabled =
+                            alreadyInTeam ||
+                            teamState.isFull ||
+                            addingId === candidate.id;
+
+                          return (
+                            <div
+                              key={candidate.id}
+                              className="flex items-center gap-2"
+                            >
+                              {/* eslint-disable-next-line @next/next/no-img-element */}
+                              <img
+                                src={candidate.artworkUrl}
+                                alt={formatPokemonName(candidate.name)}
+                                loading="lazy"
+                                className="h-7 w-7 flex-none object-contain"
+                              />
+                              <span className="min-w-0 flex-1 truncate text-[11px] font-bold text-gray-800">
+                                {formatPokemonName(candidate.name)}
+                              </span>
+                              <button
+                                type="button"
+                                onClick={() => void addPokemon(candidate)}
+                                disabled={disabled}
+                                aria-label={`Añadir a ${formatPokemonName(
+                                  candidate.name
+                                )} al equipo`}
+                                className="flex h-6 w-6 flex-none items-center justify-center rounded-full bg-red-600 text-white transition hover:bg-red-700 disabled:cursor-not-allowed disabled:bg-gray-300"
+                              >
+                                {addingId === candidate.id ? (
+                                  <Loader2 className="h-3 w-3 animate-spin" />
+                                ) : alreadyInTeam ? (
+                                  <Check className="h-3 w-3" />
+                                ) : (
+                                  <Plus className="h-3 w-3" />
+                                )}
+                              </button>
+                            </div>
+                          );
+                        })}
+                      </div>
+                    </div>
+                  )}
+                </article>
+              );
+            })}
+          </div>
+        )}
+      </section>
+
+      <section className="rounded-2xl bg-white p-5 shadow-sm">
+        <h2 className="flex items-center gap-2 text-lg font-black text-gray-900">
           <Sparkles className="h-5 w-5 text-purple-600" />
           Sugerencias para mejorar el equipo
         </h2>
@@ -845,7 +1207,7 @@ function MoveCard({
       <div className="flex items-center justify-between gap-2">
         <span className="text-xs font-bold text-gray-900">
           {move.level ? `Nv. ${move.level} ` : ''}
-          {formatPokemonName(move.name)}
+          {move.displayName}
         </span>
         {isStab && (
           <span className="rounded-full bg-green-100 px-1.5 py-0.5 text-[9px] font-bold text-green-700">
@@ -901,7 +1263,7 @@ function MoveChips({
             key={move.name}
             className="rounded-full bg-white px-2 py-0.5 text-[10px] font-semibold text-indigo-900 shadow-sm"
           >
-            {formatPokemonName(move.name)}
+            {move.displayName}
           </span>
         ))}
         {moves.length > 40 && (

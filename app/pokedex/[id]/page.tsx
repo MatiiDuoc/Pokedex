@@ -1,6 +1,7 @@
 import type { Metadata } from 'next';
 import Link from 'next/link';
 import { redirect } from 'next/navigation';
+import EncounterList from '@/components/EncounterList';
 import EvolutionTree from '@/components/EvolutionTree';
 import PokemonDetailHero from '@/components/PokemonDetailHero';
 import TypeMatchupList from '@/components/TypeMatchupList';
@@ -13,6 +14,7 @@ import {
   getTypeLabel,
 } from '@/lib/pokemon';
 import { getPokemonDetail } from '@/services/pokemonDetail';
+import { getPokemonEncounters } from '@/services/pokemonEncounters';
 
 export const revalidate = 604800;
 
@@ -68,7 +70,10 @@ export default async function PokemonDetailPage({ params }: PokemonPageProps) {
   const id = parseId(idParam);
   if (!id) redirect('/pokedex');
 
-  const detail = await getPokemonDetail(id);
+  const [detail, encounters] = await Promise.all([
+    getPokemonDetail(id),
+    getPokemonEncounters(id),
+  ]);
   if (!detail) redirect('/pokedex');
 
   const displayName = formatPokemonName(detail.name);
@@ -173,6 +178,16 @@ export default async function PokemonDetailPage({ params }: PokemonPageProps) {
                 Calculado con los tipos {detail.types.map(getTypeLabel).join(' / ')}.
               </p>
               <TypeMatchupList types={detail.types} />
+            </section>
+
+            <section className="rounded-2xl border border-gray-200 bg-white p-5 shadow-sm">
+              <h2 className="text-xl font-black text-gray-900">
+                Dónde encontrarlo
+              </h2>
+              <p className="mt-1 text-sm text-gray-600">
+                Zonas y métodos de encuentro por versión.
+              </p>
+              <EncounterList encounters={encounters} />
             </section>
 
             {detail.evolutionTree && (

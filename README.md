@@ -15,19 +15,25 @@ checklists por juego, guías paso a paso y visor 3D.
   versión shiny de todos los Pokémon.
 - **Página de detalle por Pokémon** (`/pokedex/[id]`) con artwork shiny,
   estadísticas, habilidades, entrada de la Pokédex, cadena de evolución,
-  debilidades/resistencias, visor 3D, captura y SEO propio.
+  debilidades/resistencias, zonas de encuentro por versión, visor 3D, captura y
+  SEO propio.
 - **Team Builder** (`/equipo`) con los 6 huecos del equipo, arrastrar y soltar
   para reordenar, cobertura ofensiva, debilidades compartidas y sugerencias
   automáticas de Pokémon que cubren los huecos del equipo (pool ampliado a 65
   especies).
 - **Equipo por juego** dentro de cada guía: equipo independiente por juego,
   búsqueda limitada al Pokédex regional, análisis de debilidades, amenazas
-  concretas del juego, sugerencias de contras y movimientos que puede aprender
-  cada Pokémon en esa versión (nivel, MT/MO, tutor y huevo).
+  concretas del juego, sugerencias de contras, preparación contra cada gimnasio
+  y miembro del Alto Mando (puntuación, ventajas, riesgos y Pokémon
+  recomendados) y exportación como imagen PNG.
+- **Movimientos por versión** con nombres traducidos al español, tipo,
+  categoría, potencia, precisión, STAB, ataques recomendados, MT/MO, tutor y
+  huevo.
 - **Guías visuales** con mapas SVG ilustrativos de cada región, pines de ruta,
   insignias y un Pokémon representativo del tipo de cada gimnasio.
-- **Modo oscuro** con toggle claro/oscuro, persistencia en localStorage y
-  respeto a la preferencia del sistema.
+- **Modo oscuro** con toggle claro/oscuro, persistencia en localStorage,
+  respeto a la preferencia del sistema y una capa de compatibilidad que adapta
+  fondos, textos, bordes y degradados de toda la interfaz.
 - **Visor 3D** con modelos normales y shiny, selector de animaciones, pantalla
   completa, rotación pausable, progreso de carga, precarga al pasar el ratón,
   caché de modelos en el Service Worker, ajuste de calidad en móvil y fallback
@@ -37,8 +43,8 @@ checklists por juego, guías paso a paso y visor 3D.
   completa de cada Pokémon.
 - **Comparador de Pokémon** (`/comparar`) para enfrentar estadísticas, tipos,
   habilidades, altura, peso y total de hasta tres especies.
-- **Exportación del equipo** como imagen PNG desde el Team Builder, con temas
-  oscuro, claro y shiny.
+- **Exportación del equipo** como imagen PNG desde el Team Builder global y
+  desde el equipo de cada juego, con temas oscuro, claro y shiny.
 - **Legendarios y míticos** identificados con badges y filtros, incluyendo
   ultraentes y las especies de todas las generaciones.
 - **Navegación móvil** con barra inferior, iconos Lucide, skeletons de carga,
@@ -207,6 +213,21 @@ npm run data:filters
 
 El cliente lo descarga solo cuando el usuario activa un filtro de tipo,
 habilidad o estadística, y luego lo reutiliza desde memoria.
+
+## Traducciones de PokeAPI
+
+PokeAPI devuelve los nombres de movimientos y versiones en inglés. El proyecto
+genera mapas estáticos en español desde sus CSV oficiales:
+
+```bash
+npm run data:moves
+npm run data:versions
+```
+
+- `lib/move-names-es.json` — 937 movimientos traducidos. Lo usan la API de
+  movimientos y las evoluciones que requieren conocer un ataque.
+- `lib/version-names-es.json` — versiones de los juegos para la sección
+  “Dónde encontrarlo”.
 
 ## Modelos 3D
 
