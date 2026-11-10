@@ -34,7 +34,8 @@ checklists por juego, guías paso a paso y visor 3D.
 - **Mapa interactivo 2D/3D** en cada guía: arrastrar, zoom, pantalla completa,
   marcadores clicables, última parada y siguiente objetivo destacados, ficha del
   gimnasio y acción para marcar la insignia o saltar al combate. Incluye una
-  vista **diorama 3D** con relieve, profundidad y sombra sobre el océano.
+  vista **diorama 3D** con relieve, profundidad, sombra sobre el océano y
+  niveles diferenciados de **superficie, cuevas/relieves y rutas acuáticas**.
 - **Mapa del siguiente objetivo**: indica la última insignia, la próxima parada
   y el paso de la ruta que toca, con enlace directo.
 - **Modo aventura** en cada guía: tarjeta “Tu siguiente paso”, progreso de la

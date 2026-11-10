@@ -1044,6 +1044,12 @@ export default function GameGuideView({
             >
               <RegionRouteMap
                 gyms={game.gyms}
+                steps={game.walkthrough.map((step, index) => ({
+                  index,
+                  title: step.title,
+                  goal: step.goal,
+                  done: isChecked(`step:${index}`),
+                }))}
                 completed={completedGymIndices}
                 accent={game.accent}
                 region={game.region}
@@ -1056,6 +1062,9 @@ export default function GameGuideView({
                 onGoToStep={goToStep}
                 onToggleGym={(index) =>
                   toggleChecklist(`challenge:${index}`)
+                }
+                onToggleStep={(index) =>
+                  toggleChecklist(`step:${index}`)
                 }
               />
 
