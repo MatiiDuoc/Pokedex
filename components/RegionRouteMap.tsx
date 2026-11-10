@@ -168,6 +168,50 @@ function clamp(value: number, min: number, max: number): number {
   return Math.min(max, Math.max(min, value));
 }
 
+function spreadPositions(input: MapPoint[]): MapPoint[] {
+  const points = input.map((point) => ({ ...point }));
+  if (points.length < 2) return points;
+
+  const aspect = 2.4;
+  const minDistance = 8.5;
+
+  for (let iteration = 0; iteration < 60; iteration += 1) {
+    let moved = false;
+
+    for (let i = 0; i < points.length; i += 1) {
+      for (let j = i + 1; j < points.length; j += 1) {
+        const a = points[i];
+        const b = points[j];
+        let dx = (b.x - a.x) * aspect;
+        let dy = b.y - a.y;
+        let distance = Math.hypot(dx, dy);
+
+        if (distance >= minDistance) continue;
+
+        if (distance < 0.001) {
+          dx = (i - j) * 0.1;
+          dy = (i - j) * 0.1;
+          distance = Math.hypot(dx, dy);
+        }
+
+        const push = (minDistance - distance) / 2;
+        const nx = dx / distance;
+        const ny = dy / distance;
+
+        a.x = clamp(a.x - (nx * push) / aspect, 6, 94);
+        a.y = clamp(a.y - ny * push, 8, 92);
+        b.x = clamp(b.x + (nx * push) / aspect, 6, 94);
+        b.y = clamp(b.y + ny * push, 8, 92);
+        moved = true;
+      }
+    }
+
+    if (!moved) break;
+  }
+
+  return points;
+}
+
 function statusForGym(
   index: number,
   completed: Set<number>,
@@ -208,6 +252,9 @@ export default function RegionRouteMap({
   const [is3D, setIs3D] = useState(false);
   const [separation, setSeparation] = useState(1);
   const [isolateLevel, setIsolateLevel] = useState(false);
+  const [layoutMode, setLayoutMode] = useState<'ruta' | 'geografico'>(
+    'ruta'
+  );
   const mapRef = useRef<HTMLDivElement>(null);
   const dragRef = useRef<{
     startX: number;
@@ -296,11 +343,20 @@ export default function RegionRouteMap({
     levels.find((level) => level.id === activeLevelId) ?? levels[0];
 
   const curatedGymPositions = getRegionGymPositions(region);
-  const gymPositions = gyms.map(
-    (_, index) =>
-      curatedGymPositions[index] ??
-      MAP_POSITIONS[index % MAP_POSITIONS.length]
+  const routeGymPositions = gyms.map(
+    (_, index) => MAP_POSITIONS[index % MAP_POSITIONS.length]
   );
+  const geographicGymPositions = spreadPositions(
+    gyms.map(
+      (_, index) =>
+        curatedGymPositions[index] ??
+        MAP_POSITIONS[index % MAP_POSITIONS.length]
+    )
+  );
+  const gymPositions =
+    layoutMode === 'geografico'
+      ? geographicGymPositions
+      : routeGymPositions;
 
   const lastCompletedStepIndex = steps.reduce(
     (last, step) => (step.done ? Math.max(last, step.index) : last),
@@ -316,6 +372,14 @@ export default function RegionRouteMap({
       : undefined;
 
   const getStepPoint = (step: MapStep): MapPoint => {
+    if (layoutMode === 'ruta') {
+      const point = MAP_POSITIONS[step.index % MAP_POSITIONS.length];
+      return {
+        x: clamp(point.x - 5, 6, 94),
+        y: clamp(point.y + 10, 8, 92),
+      };
+    }
+
     const title = normalizeText(step.title);
     const matchIndex = gyms.findIndex(
       (gym) =>
@@ -326,8 +390,8 @@ export default function RegionRouteMap({
     if (matchIndex >= 0) {
       const base = gymPositions[matchIndex];
       return {
-        x: clamp(base.x + 3, 4, 96),
-        y: clamp(base.y + 3, 4, 96),
+        x: clamp(base.x + 4, 4, 96),
+        y: clamp(base.y + 4, 4, 96),
       };
     }
 
@@ -354,13 +418,16 @@ export default function RegionRouteMap({
 
   const selectedStepIndex =
     selected?.kind === 'step' ? selected.index : null;
-  const activeStep =
+  const selectedStep =
     selectedStepIndex !== null
       ? steps.find((step) => step.index === selectedStepIndex)
-      : activeLevel.id !== 'superficie'
-        ? (activeLevel.steps.find((step) => !step.done) ??
-          activeLevel.steps[0])
-        : undefined;
+      : undefined;
+  const activeStep =
+    selectedStep ??
+    (activeLevel.id !== 'superficie'
+      ? (activeLevel.steps.find((step) => !step.done) ??
+        activeLevel.steps[0])
+      : undefined);
 
   const activeItemsCount =
     activeLevel.id === 'superficie' ? gyms.length : activeLevel.steps.length;
@@ -587,7 +654,11 @@ export default function RegionRouteMap({
           </span>
           <span
             className={`mt-1 max-w-[120px] truncate rounded px-1.5 py-0.5 text-[9px] font-bold shadow-sm ${
-              is3D ? 'hidden' : 'hidden sm:block'
+              is3D
+                ? 'hidden'
+                : isCurrent || isNext || isSelected
+                  ? 'block'
+                  : 'hidden sm:group-hover:block sm:group-focus-visible:block'
             } ${
               isCurrent
                 ? 'bg-blue-500 text-white'
@@ -611,9 +682,18 @@ export default function RegionRouteMap({
     isActive: boolean
   ) => {
     const isSurface = level.id === 'superficie';
-    const points = isSurface
+    const rawPoints = isSurface
       ? gymPositions
       : level.steps.map((step) => getStepPoint(step));
+    const points =
+      !isSurface && layoutMode === 'geografico'
+        ? spreadPositions(rawPoints)
+        : rawPoints;
+    const stepPoints = new Map(
+      level.steps.map((step, index) => [step.index, points[index]])
+    );
+    const pointForStep = (step: MapStep): MapPoint | undefined =>
+      isSurface ? getStepPoint(step) : stepPoints.get(step.index);
     const polyline = points
       .map((point) => `${point.x},${point.y}`)
       .join(' ');
@@ -629,36 +709,22 @@ export default function RegionRouteMap({
           : 1;
     const plateScale = is3D ? (1 - depthIndex * 0.035) * levelScale : 1;
     const surfaceStepHighlights = isSurface
-      ? [currentStep, nextStep].filter(
+      ? [currentStep, selectedStep].filter(
           (step, index, array): step is MapStep =>
             step !== undefined &&
             classifyStep(step) === 'superficie' &&
             array.findIndex(
               (candidate) => candidate?.index === step.index
             ) === index
-        ).filter((step) => {
-          if (
-            step.index === currentStep?.index ||
-            step.index === selectedStepIndex
-          ) {
-            return true;
-          }
-
-          const point = getStepPoint(step);
-          return gymPositions.every(
-            (gymPoint) =>
-              Math.hypot(gymPoint.x - point.x, gymPoint.y - point.y) >
-              10
-          );
-        })
+        )
       : [];
     const currentLevelPoint =
       currentStep && classifyStep(currentStep) === level.id
-        ? getStepPoint(currentStep)
+        ? pointForStep(currentStep)
         : null;
     const nextLevelPoint =
       nextStep && classifyStep(nextStep) === level.id
-        ? getStepPoint(nextStep)
+        ? pointForStep(nextStep)
         : null;
 
     return (
@@ -848,7 +914,8 @@ export default function RegionRouteMap({
             );
           })}
 
-          {currentLevelPoint &&
+          {!isSurface &&
+            currentLevelPoint &&
             nextLevelPoint &&
             currentStep?.index !== nextStep?.index && (
               <line
@@ -907,7 +974,11 @@ export default function RegionRouteMap({
                   </span>
                   <span
                     className={`mt-1 max-w-[110px] truncate rounded px-1.5 py-0.5 text-[9px] font-bold shadow-sm ${
-                      is3D ? 'hidden' : 'hidden sm:block'
+                      is3D
+                        ? 'hidden'
+                        : isSelected || isNext
+                          ? 'block'
+                          : 'hidden sm:group-hover:block sm:group-focus-visible:block'
                     } ${
                       isNext
                         ? 'bg-amber-300 text-amber-950'
@@ -935,10 +1006,10 @@ export default function RegionRouteMap({
 
         {isActive &&
           !isSurface &&
-          level.steps.map((step) =>
+          level.steps.map((step, index) =>
             renderStepMarker(
               step,
-              getStepPoint(step),
+              points[index],
               `step-${level.id}`
             )
           )}
@@ -1099,6 +1170,42 @@ export default function RegionRouteMap({
         )}
 
         <div className="mt-2 flex flex-wrap items-center gap-3 text-[10px] text-white/70">
+          <div className="inline-flex items-center gap-1 rounded-lg border border-cyan-200/20 bg-slate-950/60 p-0.5">
+            <span className="px-2 font-black uppercase tracking-widest text-white/45">
+              Trazado
+            </span>
+            <button
+              type="button"
+              onClick={() => {
+                setLayoutMode('ruta');
+                resetView();
+              }}
+              aria-pressed={layoutMode === 'ruta'}
+              className={`rounded-md px-2 py-1 text-[10px] font-bold transition ${
+                layoutMode === 'ruta'
+                  ? 'bg-cyan-300 text-cyan-950'
+                  : 'text-white/70 hover:bg-white/10'
+              }`}
+            >
+              Ruta
+            </button>
+            <button
+              type="button"
+              onClick={() => {
+                setLayoutMode('geografico');
+                resetView();
+              }}
+              aria-pressed={layoutMode === 'geografico'}
+              className={`rounded-md px-2 py-1 text-[10px] font-bold transition ${
+                layoutMode === 'geografico'
+                  ? 'bg-cyan-300 text-cyan-950'
+                  : 'text-white/70 hover:bg-white/10'
+              }`}
+            >
+              Geográfico
+            </button>
+          </div>
+
           <label className="inline-flex items-center gap-1.5">
             <span className="sr-only">Ir a una parada del mapa</span>
             <select

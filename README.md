@@ -41,8 +41,10 @@ checklists por juego, guías paso a paso y visor 3D.
   placas 3D apiladas, separación ajustable y modo aislar nivel.
 - **Buscador de destinos** para saltar directamente a un gimnasio o paso.
 - **Coordenadas curadas por región** para colocar gimnasios en posiciones
-  aproximadas a su geografía, con texturas, curvas de nivel y ambiente
-  holográfico.
+  aproximadas a su geografía, con conmutador **Trazado Ruta/Geográfico**,
+  texturas, curvas de nivel y ambiente holográfico. El trazado de ruta evita
+  solapamientos y mantiene el orden de las paradas; el geográfico usa la
+  posición aproximada de cada ciudad.
 - **Ficha móvil tipo bottom sheet** al tocar un marcador en pantalla pequeña.
 - **Modo aventura** en cada guía: tarjeta “Tu siguiente paso”, progreso de la
   ruta, selector para saltar a cualquier paso, botón “Hecho y seguir” que
