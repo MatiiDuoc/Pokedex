@@ -5,6 +5,9 @@ const USERNAME_PATTERN = /^[a-z0-9_]{3,20}$/;
 const MAX_CAUGHT = 1025;
 const MAX_CHECKLIST_ITEMS = 300;
 const MAX_CHECKLIST_LENGTH = 200;
+const MAX_NOTES = 120;
+const MAX_NOTE_KEY_LENGTH = 120;
+const MAX_NOTE_LENGTH = 1000;
 const MAX_TEAM_SIZE = 6;
 
 export function normalizeUsername(username: string): string {
@@ -46,7 +49,30 @@ export function validateProgressData(value: unknown): GameProgress | null {
       item.length <= MAX_CHECKLIST_LENGTH
   );
 
-  return { caught, checklist };
+  let notes: Record<string, string> | undefined;
+
+  if (
+    candidate.notes &&
+    typeof candidate.notes === 'object' &&
+    !Array.isArray(candidate.notes)
+  ) {
+    const entries = Object.entries(candidate.notes)
+      .filter(
+        ([key, value]) =>
+          key.length > 0 &&
+          key.length <= MAX_NOTE_KEY_LENGTH &&
+          typeof value === 'string'
+      )
+      .map(([key, value]) => [key, value.trim()] as const)
+      .filter(
+        ([, value]) => value.length > 0 && value.length <= MAX_NOTE_LENGTH
+      )
+      .slice(0, MAX_NOTES);
+
+    if (entries.length > 0) notes = Object.fromEntries(entries);
+  }
+
+  return notes ? { caught, checklist, notes } : { caught, checklist };
 }
 
 function isSafePokemon(value: unknown): value is PokemonBasic {

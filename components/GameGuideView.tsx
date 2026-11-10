@@ -1,7 +1,13 @@
 'use client';
 
 import Link from 'next/link';
-import { useCallback, useEffect, useRef, useState } from 'react';
+import {
+  useCallback,
+  useEffect,
+  useMemo,
+  useRef,
+  useState,
+} from 'react';
 import {
   ArrowRight,
   Award,
@@ -9,6 +15,7 @@ import {
   ChevronLeft,
   ChevronRight,
   Compass,
+  NotebookPen,
 } from 'lucide-react';
 import GameTeamBuilder from './GameTeamBuilder';
 import PokedexChecklist from './PokedexChecklist';
@@ -16,8 +23,16 @@ import RegionRouteMap from './RegionRouteMap';
 import { useAccount } from '@/components/AccountProvider';
 import { getGymTypeVisual } from '@/lib/gym-visuals';
 import { useGameProgress } from '@/lib/progress';
-import { getTypeColorByLabel } from '@/lib/pokemon';
-import type { GameGuide } from '@/types/game';
+import {
+  SPANISH_TYPE_TO_KEY,
+  TYPE_COLORS,
+  formatPokemonName,
+  getTypeColorByLabel,
+  getTypeLabel,
+} from '@/lib/pokemon';
+import { TYPE_CHART, isPokemonType } from '@/lib/type-chart';
+import { usePokemonFilters } from '@/lib/usePokemonFilters';
+import type { GameGym, GameGuide } from '@/types/game';
 import type { PokemonIndexEntry } from '@/types/pokemon';
 
 interface GameGuideViewProps {
@@ -51,6 +66,7 @@ export default function GameGuideView({
     toggleCaught,
     setCaught,
     toggleChecklist,
+    setNote,
     reset,
     isChecked,
   } = useGameProgress(game.slug);
@@ -58,6 +74,7 @@ export default function GameGuideView({
   const hasPokedex = (game.pokedexMode ?? 'regional') !== 'none';
   const loginHref = `/login?next=${encodeURIComponent(`/guias/${game.slug}`)}`;
   const progressReadOnly = requiresLogin || !loaded;
+  const { data: filterData } = usePokemonFilters(hasPokedex && loaded);
 
   useEffect(() => {
     const nextStep = game.walkthrough.findIndex(
@@ -77,6 +94,7 @@ export default function GameGuideView({
           accent: game.accent,
           checklistTotal: game.completionChecklist.length,
           stepsTotal: game.walkthrough.length,
+          challengesTotal: game.gyms.length,
           stepsDone: completedSteps,
           nextStep,
           nextStepTitle: nextStep >= 0 ? game.walkthrough[nextStep].title : null,
@@ -92,6 +110,7 @@ export default function GameGuideView({
     game.region,
     game.accent,
     game.completionChecklist.length,
+    game.gyms.length,
     game.walkthrough,
     progress.checklist,
   ]);
@@ -103,19 +122,80 @@ export default function GameGuideView({
     progress.checklist.includes(`step:${index}`)
   ).length;
   const dexDone = pokemon.filter((entry) => progress.caught.includes(entry.id)).length;
+  const gymsDone = game.gyms.filter((_, index) =>
+    progress.checklist.includes(`challenge:${index}`)
+  ).length;
 
   const totalTracked =
-    game.completionChecklist.length + game.walkthrough.length + pokemon.length;
-  const doneTracked = checklistDone + stepsDone + dexDone;
+    game.completionChecklist.length +
+    game.walkthrough.length +
+    game.gyms.length +
+    pokemon.length;
+  const doneTracked = checklistDone + stepsDone + gymsDone + dexDone;
   const overall = totalTracked === 0 ? 0 : Math.round((doneTracked / totalTracked) * 100);
   const nextStepIndex = game.walkthrough.findIndex(
     (_, index) => !progress.checklist.includes(`step:${index}`)
   );
   const nextStep = nextStepIndex >= 0 ? game.walkthrough[nextStepIndex] : null;
+  const nextStepNote = nextStep
+    ? (progress.notes?.[`step:${nextStepIndex}`] ?? '')
+    : '';
   const stepsPercentage =
     game.walkthrough.length === 0
       ? 0
       : Math.round((stepsDone / game.walkthrough.length) * 100);
+  const nextChallengeIndex = game.gyms.findIndex(
+    (_, index) => !progress.checklist.includes(`challenge:${index}`)
+  );
+  const nextChallenge =
+    nextChallengeIndex >= 0 ? game.gyms[nextChallengeIndex] : null;
+
+  const filterTypeMap = useMemo(
+    () => new Map((filterData ?? []).map((entry) => [entry.id, entry.types])),
+    [filterData]
+  );
+
+  const nextChallengePicks = useMemo(() => {
+    if (!nextChallenge) return [];
+
+    const gymTypes = nextChallenge.type
+      .split('/')
+      .map((part) => SPANISH_TYPE_TO_KEY[part.trim().toLowerCase()])
+      .filter(isPokemonType);
+
+    if (gymTypes.length === 0) return [];
+
+    const caught = new Set(progress.caught);
+
+    return pokemon
+      .filter(
+        (entry) =>
+          !caught.has(entry.id) && entry.legendaryCategory === 'none'
+      )
+      .map((entry) => {
+        const types = filterTypeMap.get(entry.id) ?? [];
+        const typedTypes = types.filter(isPokemonType);
+        const offensive = typedTypes.filter((type) =>
+          gymTypes.some(
+            (gymType) => (TYPE_CHART[type][gymType] ?? 1) > 1
+          )
+        ).length;
+        const defensive = typedTypes.filter((type) =>
+          gymTypes.some(
+            (gymType) => (TYPE_CHART[gymType][type] ?? 1) < 1
+          )
+        ).length;
+
+        return {
+          entry,
+          types,
+          score: offensive * 2 + defensive,
+        };
+      })
+      .filter((candidate) => candidate.score > 0)
+      .sort((a, b) => b.score - a.score || a.entry.id - b.entry.id)
+      .slice(0, 4);
+  }, [nextChallenge, filterTypeMap, pokemon, progress.caught]);
 
   const goToStep = useCallback(
     (index: number) => {
@@ -347,6 +427,17 @@ export default function GameGuideView({
                     <p className="mt-1 max-w-3xl text-sm text-gray-600">
                       {nextStep.goal}
                     </p>
+                    {nextStepNote && (
+                      <p className="mt-2 line-clamp-3 whitespace-pre-line rounded-lg bg-amber-50 px-3 py-2 text-xs font-semibold text-amber-900">
+                        Nota: {nextStepNote}
+                      </p>
+                    )}
+                    {nextChallenge && (
+                      <NextChallengePicks
+                        challenge={nextChallenge}
+                        picks={nextChallengePicks}
+                      />
+                    )}
                   </>
                 ) : (
                   <>
@@ -610,6 +701,17 @@ export default function GameGuideView({
                         ? nextStep.goal
                         : 'Has completado todos los pasos. Revisa la checklist y el Pokédex para terminar el 100%.'}
                     </p>
+                    {nextStepNote && (
+                      <p className="mt-2 whitespace-pre-line rounded-lg bg-amber-50 px-3 py-2 text-xs font-semibold text-amber-900">
+                        Nota: {nextStepNote}
+                      </p>
+                    )}
+                    {nextChallenge && (
+                      <NextChallengePicks
+                        challenge={nextChallenge}
+                        picks={nextChallengePicks}
+                      />
+                    )}
                     <p className="mt-2 text-xs font-semibold text-gray-500">
                       {requiresLogin
                         ? 'Inicia sesión para guardar tu avance.'
@@ -739,6 +841,36 @@ export default function GameGuideView({
                               </li>
                             ))}
                           </ul>
+
+                          {loaded && (
+                            <details
+                              open={Boolean(progress.notes?.[key])}
+                              className="mt-3 rounded-xl border border-gray-200 bg-gray-50 p-3"
+                            >
+                              <summary className="flex cursor-pointer list-none items-center gap-1.5 text-xs font-bold text-gray-600">
+                                <NotebookPen className="h-3.5 w-3.5 text-amber-600" />
+                                {progress.notes?.[key]
+                                  ? 'Mi nota de este paso'
+                                  : 'Añadir nota personal'}
+                              </summary>
+                              <textarea
+                                defaultValue={progress.notes?.[key] ?? ''}
+                                onBlur={(event) =>
+                                  setNote(key, event.currentTarget.value)
+                                }
+                                disabled={progressReadOnly}
+                                maxLength={1000}
+                                rows={3}
+                                placeholder="Ej.: comprar Pociones, guardar antes del legendario, volver por la MO..."
+                                className="mt-2 w-full rounded-lg border border-gray-300 bg-white px-3 py-2 text-sm text-gray-900 placeholder-gray-400 focus:border-red-500 focus:outline-none focus:ring-2 focus:ring-red-200 disabled:cursor-not-allowed disabled:opacity-60"
+                              />
+                              <p className="mt-1 text-[10px] font-semibold text-gray-400">
+                                {requiresLogin
+                                  ? 'Inicia sesión para guardar tus notas.'
+                                  : 'Se guarda en tu cuenta al salir del campo.'}
+                              </p>
+                            </details>
+                          )}
                         </div>
                       </div>
 
@@ -789,11 +921,31 @@ export default function GameGuideView({
                 <p className="mt-1 text-sm text-gray-600">
                   Orden recomendado y consejos rápidos para cada desafío.
                 </p>
+                <div className="mt-3 flex items-center gap-3">
+                  <div className="h-2 w-40 overflow-hidden rounded-full bg-gray-200">
+                    <div
+                      className="h-full rounded-full bg-gradient-to-r from-red-500 to-orange-400"
+                      style={{
+                        width: `${
+                          game.gyms.length === 0
+                            ? 0
+                            : Math.round((gymsDone / game.gyms.length) * 100)
+                        }%`,
+                      }}
+                    />
+                  </div>
+                  <span className="text-xs font-bold text-gray-500">
+                    {gymsDone}/{game.gyms.length} completados
+                  </span>
+                </div>
               </div>
 
               <div className="grid gap-4 md:grid-cols-2">
                 {game.gyms.map((challenge, index) => {
                   const visual = getGymTypeVisual(challenge.type);
+                  const challengeDone = progress.checklist.includes(
+                    `challenge:${index}`
+                  );
 
                   return (
                   <article
@@ -840,6 +992,40 @@ export default function GameGuideView({
                     </div>
 
                     <p className="mt-3 text-sm text-gray-600">{challenge.tip}</p>
+
+                    <div className="mt-3 flex flex-wrap items-center justify-between gap-2 border-t border-gray-100 pt-3">
+                      <span
+                        className={`inline-flex items-center gap-1 text-xs font-bold ${
+                          challengeDone ? 'text-green-700' : 'text-gray-500'
+                        }`}
+                      >
+                        {challengeDone ? (
+                          <>
+                            <CheckCircle2 className="h-3.5 w-3.5" />
+                            Conseguida
+                          </>
+                        ) : (
+                          'Pendiente'
+                        )}
+                      </span>
+                      <button
+                        type="button"
+                        onClick={() =>
+                          toggleChecklist(`challenge:${index}`)
+                        }
+                        disabled={progressReadOnly}
+                        aria-pressed={challengeDone}
+                        className={`rounded-lg px-3 py-1.5 text-xs font-bold transition focus:outline-none focus-visible:ring-2 focus-visible:ring-red-300 disabled:cursor-not-allowed disabled:opacity-60 ${
+                          challengeDone
+                            ? 'bg-green-100 text-green-800 hover:bg-green-200'
+                            : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
+                        }`}
+                      >
+                        {challengeDone
+                          ? 'Desmarcar'
+                          : 'Marcar conseguida'}
+                      </button>
+                    </div>
                   </article>
                   );
                 })}
@@ -968,16 +1154,70 @@ export default function GameGuideView({
               <div className="mt-4 rounded-2xl border border-blue-200 bg-blue-50 p-5">
                 <h2 className="font-bold text-blue-900">Sobre el progreso</h2>
                 <p className="mt-1 text-sm text-blue-900/90">
-                  Las marcas se guardan en el almacenamiento local de este
-                  navegador. Si cambias de dispositivo o borras los datos del
-                  sitio, el progreso se perderá. En una próxima versión se podrá
-                  sincronizar con una cuenta.
+                  Las marcas, las insignias conseguidas y tus notas se guardan
+                  en tu cuenta, así que puedes continuar desde otro dispositivo
+                  al iniciar sesión.
                 </p>
               </div>
             </section>
           )}
         </div>
       </div>
+    </div>
+  );
+}
+
+interface CatchPick {
+  entry: PokemonIndexEntry;
+  types: string[];
+}
+
+function NextChallengePicks({
+  challenge,
+  picks,
+}: {
+  challenge: GameGym;
+  picks: CatchPick[];
+}) {
+  if (picks.length === 0) return null;
+
+  return (
+    <div className="mt-3">
+      <p className="text-[10px] font-black uppercase tracking-widest text-gray-500">
+        Capturas recomendadas · {challenge.leader} ({challenge.type})
+      </p>
+      <div className="mt-1.5 flex flex-wrap gap-1.5">
+        {picks.map(({ entry, types }) => (
+          <Link
+            key={entry.id}
+            href={`/pokedex/${entry.id}`}
+            className="inline-flex items-center gap-1.5 rounded-full bg-gray-100 py-1 pl-1 pr-2.5 text-[11px] font-bold text-gray-700 transition hover:bg-gray-200"
+          >
+            {/* eslint-disable-next-line @next/next/no-img-element */}
+            <img
+              src={entry.spriteUrl}
+              alt=""
+              loading="lazy"
+              className="h-6 w-6 object-contain"
+            />
+            {formatPokemonName(entry.name)}
+            <span className="flex items-center gap-0.5" aria-hidden="true">
+              {types.map((type) => (
+                <span
+                  key={type}
+                  title={getTypeLabel(type)}
+                  className={`h-2 w-2 rounded-full ${
+                    TYPE_COLORS[type] ?? 'bg-gray-400'
+                  }`}
+                />
+              ))}
+            </span>
+          </Link>
+        ))}
+      </div>
+      <p className="mt-1 text-[10px] text-gray-400">
+        Pokémon del Pokédex de este juego que encajan contra el próximo desafío.
+      </p>
     </div>
   );
 }

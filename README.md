@@ -34,6 +34,12 @@ checklists por juego, guías paso a paso y visor 3D.
 - **Modo aventura** en cada guía: tarjeta “Tu siguiente paso”, progreso de la
   ruta, selector para saltar a cualquier paso, botón “Hecho y seguir” que
   avanza automáticamente y enlaces profundos `?paso=N`.
+- **Notas personales por paso**, guardadas en la cuenta, para recordar objetos,
+  compras, guardados o tareas pendientes.
+- **Seguimiento de gimnasios e insignias**: marca cada desafío como conseguido
+  y consulta el progreso de la guía.
+- **Capturas recomendadas para el próximo desafío**, calculadas con los tipos
+  del siguiente gimnasio y el Pokédex regional del juego.
 - **Continuar donde lo dejaste** desde el inicio y desde el listado de guías,
   con progreso por guía y acceso directo al siguiente paso pendiente.
 - **Modo oscuro** con toggle claro/oscuro, persistencia en localStorage,

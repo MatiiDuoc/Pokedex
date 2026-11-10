@@ -36,6 +36,25 @@ describe('validación de cuenta y progreso', () => {
     });
   });
 
+  it('sanea las notas personales por paso', () => {
+    const result = validateProgressData({
+      caught: [],
+      checklist: [],
+      notes: {
+        'step:0': '  Comprar Pociones antes de entrar  ',
+        'step:1': '',
+        [`x`.repeat(130)]: 'Clave demasiado larga',
+        'step:2': 123,
+      },
+    });
+
+    expect(result).toEqual({
+      caught: [],
+      checklist: [],
+      notes: { 'step:0': 'Comprar Pociones antes de entrar' },
+    });
+  });
+
   it('rechaza progreso con forma inválida', () => {
     expect(validateProgressData(null)).toBeNull();
     expect(validateProgressData({ caught: 'no', checklist: [] })).toBeNull();

@@ -203,12 +203,18 @@ export default function GameGuideList({ games }: GameGuideListProps) {
               const stepsDone = checkedKeys.filter((key) =>
                 key.startsWith('step:')
               ).length;
+              const challengesDone = checkedKeys.filter((key) =>
+                key.startsWith('challenge:')
+              ).length;
               const checklistDone = game.completionChecklist.filter((item) =>
                 checkedKeys.includes(item)
               ).length;
               const totalProgress =
-                game.walkthrough.length + game.completionChecklist.length;
-              const doneProgress = stepsDone + checklistDone;
+                game.walkthrough.length +
+                game.gyms.length +
+                game.completionChecklist.length;
+              const doneProgress =
+                stepsDone + challengesDone + checklistDone;
               const progressPercentage =
                 totalProgress === 0
                   ? 0

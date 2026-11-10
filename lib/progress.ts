@@ -60,6 +60,21 @@ export function useGameProgress(slug: string) {
     [progress, update, user]
   );
 
+  const setNote = useCallback(
+    (key: string, value: string) => {
+      if (!user) return;
+
+      const notes = { ...(progress.notes ?? {}) };
+      const trimmed = value.trim().slice(0, 1000);
+
+      if (trimmed) notes[key] = trimmed;
+      else delete notes[key];
+
+      update({ ...progress, notes });
+    },
+    [progress, update, user]
+  );
+
   const reset = useCallback(() => {
     update(EMPTY_PROGRESS);
   }, [update]);
@@ -74,6 +89,7 @@ export function useGameProgress(slug: string) {
     toggleCaught,
     setCaught,
     toggleChecklist,
+    setNote,
     reset,
   };
 }

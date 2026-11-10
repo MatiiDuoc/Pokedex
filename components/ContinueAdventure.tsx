@@ -12,6 +12,7 @@ interface LastGuide {
   accent: string;
   checklistTotal: number;
   stepsTotal?: number;
+  challengesTotal?: number;
   nextStep?: number;
   nextStepTitle?: string | null;
   updatedAt: number;
@@ -53,6 +54,10 @@ function readLastGuide(): LastGuide | null {
       checklistTotal: parsed.checklistTotal,
       stepsTotal:
         typeof parsed.stepsTotal === 'number' ? parsed.stepsTotal : 0,
+      challengesTotal:
+        typeof parsed.challengesTotal === 'number'
+          ? parsed.challengesTotal
+          : 0,
       nextStep:
         typeof parsed.nextStep === 'number' ? parsed.nextStep : undefined,
       nextStepTitle:
@@ -128,13 +133,20 @@ export default function ContinueAdventure({
 
   const progress = guides[lastGuide.slug];
   const checklistDone =
-    progress?.checklist.filter((item) => !item.startsWith('step:')).length ?? 0;
+    progress?.checklist.filter(
+      (item) => !item.startsWith('step:') && !item.startsWith('challenge:')
+    ).length ?? 0;
   const stepsDone =
     progress?.checklist.filter((item) => item.startsWith('step:')).length ?? 0;
-  const done = checklistDone + stepsDone;
+  const challengesDone =
+    progress?.checklist.filter((item) => item.startsWith('challenge:'))
+      .length ?? 0;
+  const done = checklistDone + stepsDone + challengesDone;
   const total = Math.max(
     1,
-    lastGuide.checklistTotal + (lastGuide.stepsTotal ?? 0)
+    lastGuide.checklistTotal +
+      (lastGuide.stepsTotal ?? 0) +
+      (lastGuide.challengesTotal ?? 0)
   );
   const percentage = Math.min(100, Math.round((done / total) * 100));
   const nextStepNumber =
@@ -161,8 +173,7 @@ export default function ContinueAdventure({
             </p>
             <h2 className="mt-1 truncate text-2xl font-black">{lastGuide.title}</h2>
             <p className="mt-1 text-sm text-white/80">
-              {lastGuide.region} · {done} de {total} objetivos y pasos
-              completados
+              {lastGuide.region} · {done} de {total} objetivos completados
             </p>
             {lastGuide.nextStepTitle && hasNextStep && (
               <p className="mt-1 text-xs font-bold text-white/85">
