@@ -1,70 +1,11 @@
 import locationAreas from '@/lib/location-areas.json';
 import locationNamesEs from '@/lib/location-names-es.json';
+import encounterMethodsEs from '@/lib/encounter-methods-es.json';
 import { formatPokemonName } from '@/lib/pokemon';
 
 const AREA_TO_BASE = locationAreas as Record<string, string>;
 const LOCATION_NAMES = locationNamesEs as Record<string, string>;
-
-const METHOD_NAMES_ES: Record<string, string> = {
-  walk: 'Caminando',
-  'old-rod': 'Caña vieja',
-  'good-rod': 'Caña buena',
-  'super-rod': 'Caña súper',
-  surf: 'Surfeando',
-  'rock-smash': 'Golpe roca',
-  headbutt: 'Cabezazo',
-  'headbutt-low': 'Cabezazo (bajo)',
-  'headbutt-normal': 'Cabezazo (normal)',
-  'headbutt-high': 'Cabezazo (alto)',
-  'dark-grass': 'Hierba oscura',
-  'grass-spots': 'Zonas de hierba',
-  'cave-spots': 'Zonas de cueva',
-  'bridge-spots': 'Zonas de puente',
-  'super-rod-spots': 'Zonas de caña súper',
-  'surf-spots': 'Zonas de surf',
-  'yellow-flowers': 'Flores amarillas',
-  'purple-flowers': 'Flores moradas',
-  'red-flowers': 'Flores rojas',
-  'rough-terrain': 'Terreno irregular',
-  gift: 'Regalo',
-  'gift-egg': 'Huevo de regalo',
-  static: 'Encuentro fijo',
-  pokeflute: 'Pokéflauta',
-  'squirt-bottle': 'Botella de agua',
-  'wailmer-pail': 'Cubo Wailmer',
-  seaweed: 'Algas',
-  'roaming-grass': 'Errante (hierba)',
-  'roaming-water': 'Errante (agua)',
-  'devon-scope': 'Scope Devon',
-  'feebas-tile-fishing': 'Pesca en zona de Feebas',
-  'island-scan': 'Escáner de isla',
-  sos: 'SOS',
-  'sos-from-bubbling-spot': 'SOS en zona burbujeante',
-  'bubbling-spots': 'Zonas burbujeantes',
-  'berry-trees': 'Árboles de bayas',
-  'npc-trade': 'Intercambio con NPC',
-  overworld: 'Mundo abierto',
-  'overworld-water': 'Mundo abierto (agua)',
-  'overworld-flying': 'Mundo abierto (volando)',
-  'overworld-special': 'Mundo abierto (especial)',
-  'overworld-flying-special': 'Mundo abierto (volando, especial)',
-  'overworld-water-special': 'Mundo abierto (agua, especial)',
-  horde: 'Horda',
-  snag: 'Captura',
-  'snag-rematch': 'Captura (revancha)',
-  pokespot: 'Pokéspot',
-  'hidden-grotto': 'Gruta oculta',
-  'honey-tree': 'Árbol de miel',
-  'dynamax-adventure': 'Aventura Dinamax',
-  'max-raid': 'Maxincursión',
-  wanderer: 'Errante',
-  'chase-water': 'Persecución acuática',
-  'trash-can-ambush': 'Emboscada en cubo de basura',
-  'rustling-bush-ambush': 'Emboscada en arbusto',
-  'ceiling-ambush': 'Emboscada desde el techo',
-  'ground-ambush': 'Emboscada desde el suelo',
-  'sky-ambush': 'Emboscada desde el cielo',
-};
+const METHOD_NAMES_ES = encounterMethodsEs as Record<string, string>;
 
 const PROVINCE_NUMBERS: Record<string, number> = {
   one: 1,

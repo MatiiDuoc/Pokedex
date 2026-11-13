@@ -2,6 +2,7 @@ export const GUIDE_TABS = [
   'resumen',
   'pasos',
   'desafios',
+  'rutas',
   'equipo',
   'pokedex',
   'consejos',

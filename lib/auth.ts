@@ -92,6 +92,13 @@ export async function verifyPassword(
 
 export async function createSession(userId: string): Promise<void> {
   const db = requireDb();
+  const cookieStore = await cookies();
+  const previousToken = cookieStore.get(SESSION_COOKIE)?.value;
+
+  if (previousToken) {
+    await db`DELETE FROM sessions WHERE token_hash = ${hashToken(previousToken)}`;
+  }
+
   const token = randomBytes(32).toString('base64url');
   const tokenHash = hashToken(token);
   const expiresAt = new Date(Date.now() + SESSION_DAYS * 24 * 60 * 60 * 1000);
@@ -101,7 +108,6 @@ export async function createSession(userId: string): Promise<void> {
     VALUES (${tokenHash}, ${userId}, ${expiresAt.toISOString()})
   `;
 
-  const cookieStore = await cookies();
   cookieStore.set(SESSION_COOKIE, token, {
     httpOnly: true,
     secure: process.env.NODE_ENV === 'production',
@@ -227,10 +233,26 @@ export async function getClientIp(): Promise<string> {
   return headerStore.get('x-real-ip') || 'unknown';
 }
 
-/** Protección CSRF básica para mutaciones con cookies SameSite=Lax. */
+/** Protección CSRF para mutaciones con cookies SameSite=Lax. */
 export function isSameOrigin(request: Request): boolean {
+  const method = request.method.toUpperCase();
+  const secFetchSite = request.headers.get('sec-fetch-site');
+
+  if (
+    secFetchSite &&
+    secFetchSite !== 'same-origin' &&
+    secFetchSite !== 'same-site' &&
+    secFetchSite !== 'none'
+  ) {
+    return false;
+  }
+
   const origin = request.headers.get('origin');
-  if (!origin) return true;
+  if (!origin) {
+    // Los navegadores envían Origin en las peticiones mutables. Si no viene,
+    // solo aceptamos métodos de lectura para no abrir la puerta a CSRF.
+    return method === 'GET' || method === 'HEAD';
+  }
 
   const host = request.headers.get('host');
   if (!host) return false;

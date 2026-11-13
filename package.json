@@ -10,12 +10,14 @@
     "typecheck": "tsc --noEmit",
     "test": "vitest run",
     "test:watch": "vitest",
+    "test:e2e": "playwright test",
     "db:migrate": "node --env-file=.env.local scripts/db-migrate.mjs",
     "users:list": "node --env-file=.env.local scripts/user-admin.mjs list",
     "users:create": "node --env-file=.env.local scripts/user-admin.mjs create",
     "users:password": "node --env-file=.env.local scripts/user-admin.mjs password",
     "users:delete": "node --env-file=.env.local scripts/user-admin.mjs delete",
     "data:filters": "node scripts/generate-pokemon-filters.mjs",
+    "data:encounters": "node scripts/generate-route-encounters.mjs",
     "data:locations": "node scripts/generate-location-names.mjs",
     "data:moves": "node scripts/generate-move-names.mjs",
     "data:versions": "node scripts/generate-version-names.mjs"
@@ -34,6 +36,7 @@
     "three": "^0.187.0"
   },
   "devDependencies": {
+    "@playwright/test": "^1.65.0",
     "@tailwindcss/postcss": "^4",
     "@testing-library/jest-dom": "^7.0.1",
     "@testing-library/react": "^16.3.3",

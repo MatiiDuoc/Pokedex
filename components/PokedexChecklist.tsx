@@ -70,7 +70,7 @@ const STAT_OPTIONS = [
 ] as const;
 const MIN_STAT_OPTIONS = [50, 75, 100, 120, 150, 180];
 const MIN_TOTAL_OPTIONS = [300, 400, 500, 600, 680];
-type StatusFilter = 'all' | 'seen' | 'caught' | 'missing';
+type StatusFilter = 'all' | 'seen' | 'caught' | 'uncaught' | 'missing';
 export default function PokedexChecklist({
   pokemon,
   caught,
@@ -143,6 +143,8 @@ export default function PokedexChecklist({
       if (!matchesQuery) return false;
       if (status === 'seen' && !seenSet.has(entry.id)) return false;
       if (status === 'caught' && !caughtSet.has(entry.id)) return false;
+      if (status === 'uncaught' && !seenSet.has(entry.id)) return false;
+      if (status === 'uncaught' && caughtSet.has(entry.id)) return false;
       if (status === 'missing' && seenSet.has(entry.id)) return false;
 
       return matchesAdvancedFilters(
@@ -165,6 +167,7 @@ export default function PokedexChecklist({
 
   const seenInGame = pokemon.filter((entry) => seenSet.has(entry.id)).length;
   const caughtInGame = pokemon.filter((entry) => caughtSet.has(entry.id)).length;
+  const pendingInGame = Math.max(0, seenInGame - caughtInGame);
   const seenPercentage =
     pokemon.length === 0 ? 0 : (seenInGame / pokemon.length) * 100;
   const caughtPercentage =
@@ -239,6 +242,7 @@ export default function PokedexChecklist({
     { id: 'all', label: 'Todos' },
     { id: 'seen', label: 'Vistos' },
     { id: 'caught', label: 'Capturados' },
+    { id: 'uncaught', label: 'Pendientes' },
     { id: 'missing', label: 'Sin ver' },
   ];
 
@@ -271,7 +275,9 @@ export default function PokedexChecklist({
             </p>
           </div>
           <div className="text-sm font-semibold text-gray-500">
-            {loaded ? `${caughtInGame} capturados` : 'Cargando progreso...'}
+            {loaded
+              ? `${caughtInGame} capturados · ${pendingInGame} pendientes`
+              : 'Cargando progreso...'}
           </div>
         </div>
 

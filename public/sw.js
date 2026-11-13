@@ -1,4 +1,4 @@
-const VERSION = 'pokedex-v3';
+const VERSION = 'pokedex-v4';
 const STATIC_CACHE = `${VERSION}-static`;
 const PAGES_CACHE = `${VERSION}-pages`;
 const MODELS_CACHE = `${VERSION}-models`;
@@ -8,6 +8,7 @@ const PRECACHE = [
   '/offline',
   '/guias',
   '/pokedex',
+  '/shiny',
   '/icon.svg',
   '/manifest.webmanifest',
 ];

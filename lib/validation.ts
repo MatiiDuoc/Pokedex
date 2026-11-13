@@ -1,5 +1,11 @@
 import type { GameProgress } from '@/types/progress';
 import type { PokemonBasic } from '@/types/pokemon';
+import {
+  MAX_SHINY_HUNTS,
+  SHINY_METHODS,
+  type ShinyHunt,
+  type ShinyMethod,
+} from '@/types/shiny';
 
 const USERNAME_PATTERN = /^[a-z0-9_]{3,20}$/;
 const MAX_CAUGHT = 1025;
@@ -117,6 +123,78 @@ export function validateTeamData(value: unknown): PokemonBasic[] | null {
   if (ids.size !== value.length) return null;
 
   return value;
+}
+
+export function validateShinyHunts(value: unknown): ShinyHunt[] | null {
+  if (!Array.isArray(value)) return null;
+  if (value.length > MAX_SHINY_HUNTS) return null;
+
+  const ids = new Set<string>();
+  const hunts: ShinyHunt[] = [];
+
+  for (const item of value) {
+    if (typeof item !== 'object' || item === null) return null;
+    const candidate = item as Partial<ShinyHunt>;
+
+    if (
+      typeof candidate.id !== 'string' ||
+      candidate.id.length < 1 ||
+      candidate.id.length > 100 ||
+      ids.has(candidate.id)
+    ) {
+      return null;
+    }
+
+    if (
+      typeof candidate.pokemonId !== 'number' ||
+      !Number.isInteger(candidate.pokemonId) ||
+      candidate.pokemonId < 1 ||
+      candidate.pokemonId > 1025 ||
+      typeof candidate.pokemonName !== 'string' ||
+      candidate.pokemonName.length < 1 ||
+      candidate.pokemonName.length > 120 ||
+      typeof candidate.gameSlug !== 'string' ||
+      !/^[a-z0-9-]{2,80}$/.test(candidate.gameSlug) ||
+      typeof candidate.gameTitle !== 'string' ||
+      candidate.gameTitle.length < 1 ||
+      candidate.gameTitle.length > 120 ||
+      typeof candidate.method !== 'string' ||
+      !SHINY_METHODS.includes(candidate.method as ShinyMethod) ||
+      typeof candidate.encounters !== 'number' ||
+      !Number.isInteger(candidate.encounters) ||
+      candidate.encounters < 0 ||
+      candidate.encounters > 10_000_000 ||
+      typeof candidate.hasShinyCharm !== 'boolean' ||
+      typeof candidate.notes !== 'string' ||
+      candidate.notes.length > 1000 ||
+      typeof candidate.startedAt !== 'string' ||
+      candidate.startedAt.length > 40 ||
+      !(
+        candidate.completedAt === null ||
+        (typeof candidate.completedAt === 'string' &&
+          candidate.completedAt.length <= 40)
+      )
+    ) {
+      return null;
+    }
+
+    ids.add(candidate.id);
+    hunts.push({
+      id: candidate.id,
+      pokemonId: candidate.pokemonId,
+      pokemonName: candidate.pokemonName,
+      gameSlug: candidate.gameSlug,
+      gameTitle: candidate.gameTitle,
+      method: candidate.method as ShinyMethod,
+      encounters: candidate.encounters,
+      hasShinyCharm: candidate.hasShinyCharm,
+      notes: candidate.notes,
+      startedAt: candidate.startedAt,
+      completedAt: candidate.completedAt,
+    });
+  }
+
+  return hunts;
 }
 
 export { MAX_TEAM_SIZE };

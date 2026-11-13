@@ -4,6 +4,7 @@ import {
   isValidSlug,
   isValidUsername,
   validateProgressData,
+  validateShinyHunts,
   validateTeamData,
 } from './validation';
 
@@ -87,5 +88,27 @@ describe('validación de cuenta y progreso', () => {
     expect(validateTeamData([pokemon, pokemon])).toBeNull();
     expect(validateTeamData([{ ...pokemon, id: 0 }])).toBeNull();
     expect(validateTeamData('no')).toBeNull();
+  });
+
+  it('valida cacerías shiny', () => {
+    const hunt = {
+      id: 'hunt-1',
+      pokemonId: 25,
+      pokemonName: 'pikachu',
+      gameSlug: 'red-blue-green',
+      gameTitle: 'Rojo / Azul / Verde',
+      method: 'masuda',
+      encounters: 120,
+      hasShinyCharm: true,
+      notes: 'Ruta 2',
+      startedAt: '2026-11-13T00:00:00.000Z',
+      completedAt: null,
+    };
+
+    expect(validateShinyHunts([hunt])).toEqual([hunt]);
+    expect(validateShinyHunts([hunt, hunt])).toBeNull();
+    expect(validateShinyHunts([{ ...hunt, pokemonId: 0 }])).toBeNull();
+    expect(validateShinyHunts([{ ...hunt, method: 'no-existe' }])).toBeNull();
+    expect(validateShinyHunts('no')).toBeNull();
   });
 });

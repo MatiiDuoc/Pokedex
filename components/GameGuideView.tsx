@@ -20,6 +20,7 @@ import GameTeamBuilder from './GameTeamBuilder';
 import GymBadge from './GymBadge';
 import PokedexChecklist from './PokedexChecklist';
 import RegionRouteMap from './RegionRouteMap';
+import RouteExplorer from './RouteExplorer';
 import TrainerAvatar from './TrainerAvatar';
 import { useAccount } from '@/components/AccountProvider';
 import { getGymBadgeVisual } from '@/lib/gym-badges';
@@ -54,6 +55,7 @@ type TabId =
   | 'resumen'
   | 'pasos'
   | 'desafios'
+  | 'rutas'
   | 'equipo'
   | 'pokedex'
   | 'consejos';
@@ -415,6 +417,9 @@ export default function GameGuideView({
     { id: 'desafios', label: game.challengeLabel },
     ...(hasPokedex
       ? [
+          ...(versionGroup
+            ? [{ id: 'rutas' as const, label: 'Rutas' }]
+            : []),
           { id: 'equipo' as const, label: 'Mi equipo' },
           { id: 'pokedex' as const, label: 'Pokédex' },
         ]
@@ -1470,6 +1475,26 @@ export default function GameGuideView({
                   />
                 </div>
               )}
+            </section>
+          )}
+
+          {activeTab === 'rutas' && versionGroup && (
+            <section
+              id="panel-rutas"
+              role="tabpanel"
+              aria-labelledby="tab-rutas"
+            >
+              <RouteExplorer
+                key={versionGroup}
+                versionGroup={versionGroup}
+                gameTitle={game.shortTitle}
+                pokemon={pokemon}
+                caught={progress.caught}
+                seen={progress.seen ?? []}
+                readOnly={progressReadOnly}
+                onToggleCaught={toggleCaught}
+                onToggleSeen={toggleSeen}
+              />
             </section>
           )}
 

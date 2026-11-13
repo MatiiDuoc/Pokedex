@@ -13,6 +13,7 @@ export default function AccountDashboard() {
     registrationOpen,
     guides,
     team,
+    shinyHunts,
     logout,
     resetAll,
   } = useAccount();
@@ -74,6 +75,9 @@ export default function AccountDashboard() {
     (total, progress) => total + progress.checklist.length,
     0
   );
+  const shinyCompleted = shinyHunts.filter(
+    (hunt) => hunt.completedAt !== null
+  ).length;
 
   const handleReset = async () => {
     const confirmed = window.confirm(
@@ -144,6 +148,24 @@ export default function AccountDashboard() {
         <Stat label="Guías con progreso" value={guideCount} loading={dataLoading} />
         <Stat label="Pokémon marcados" value={caughtCount} loading={dataLoading} />
         <Stat label="Marcas completadas" value={checklistCount} loading={dataLoading} />
+      </div>
+
+      <div className="mt-5 flex flex-wrap items-center justify-between gap-3 rounded-2xl bg-white p-5 shadow-sm">
+        <div>
+          <h2 className="text-lg font-bold text-gray-900">Shiny Tracker</h2>
+          <p className="mt-1 text-sm text-gray-600">
+            {shinyHunts.length} {shinyHunts.length === 1 ? 'cacería' : 'cacerías'}{' '}
+            · {shinyCompleted}{' '}
+            {shinyCompleted === 1 ? 'completada' : 'completadas'}. Lleva el
+            contador y la probabilidad acumulada.
+          </p>
+        </div>
+        <Link
+          href="/shiny"
+          className="rounded-xl bg-amber-500 px-4 py-2.5 text-sm font-bold text-amber-950 transition hover:bg-amber-400"
+        >
+          Abrir Shiny Tracker →
+        </Link>
       </div>
 
       <div className="mt-5 rounded-2xl bg-white p-5 shadow-sm">

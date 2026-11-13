@@ -13,6 +13,7 @@ import {
 import type { AuthUser } from '@/types/auth';
 import type { GameProgress } from '@/types/progress';
 import type { PokemonBasic } from '@/types/pokemon';
+import { SHINY_HUNTS_SLUG, type ShinyHunt } from '@/types/shiny';
 
 const MAX_TEAM_SIZE = 6;
 const CACHE_PREFIX = 'pokedex:cache:';
@@ -20,12 +21,13 @@ const PENDING_PREFIX = 'pokedex:pending:';
 const SAVE_DEBOUNCE_MS = 500;
 const GAME_TEAM_PREFIX = '__team__:';
 
-type PendingSave = GameProgress | PokemonBasic[];
+type PendingSave = GameProgress | PokemonBasic[] | ShinyHunt[];
 
 interface AccountData {
   guides: Record<string, GameProgress>;
   team: PokemonBasic[];
   gameTeams: Record<string, PokemonBasic[]>;
+  shinyHunts: ShinyHunt[];
 }
 
 interface AuthResult {
@@ -43,12 +45,14 @@ interface AccountContextValue {
   guides: Record<string, GameProgress>;
   team: PokemonBasic[];
   gameTeams: Record<string, PokemonBasic[]>;
+  shinyHunts: ShinyHunt[];
   login: (username: string, password: string) => Promise<AuthResult>;
   register: (username: string, password: string) => Promise<AuthResult>;
   logout: () => Promise<void>;
   saveGuide: (slug: string, data: GameProgress) => void;
   saveTeam: (team: PokemonBasic[]) => void;
   saveGameTeam: (gameSlug: string, team: PokemonBasic[]) => void;
+  saveShinyHunts: (hunts: ShinyHunt[]) => void;
   resetAll: () => Promise<AuthResult>;
   refresh: () => Promise<void>;
 }
@@ -84,6 +88,7 @@ function readCache(userId: string): AccountData | null {
         parsed.gameTeams && typeof parsed.gameTeams === 'object'
           ? parsed.gameTeams
           : {},
+      shinyHunts: Array.isArray(parsed.shinyHunts) ? parsed.shinyHunts : [],
     };
   } catch {
     return null;
@@ -123,8 +128,12 @@ function readPending(userId: string): Record<string, PendingSave> | null {
     const pending: Record<string, PendingSave> = {};
 
     for (const [slug, value] of Object.entries(parsed)) {
-      if (slug === '__team__' || slug.startsWith(GAME_TEAM_PREFIX)) {
-        if (Array.isArray(value)) pending[slug] = value as PokemonBasic[];
+      if (
+        slug === '__team__' ||
+        slug === SHINY_HUNTS_SLUG ||
+        slug.startsWith(GAME_TEAM_PREFIX)
+      ) {
+        if (Array.isArray(value)) pending[slug] = value as PendingSave;
       } else if (value && typeof value === 'object' && !Array.isArray(value)) {
         pending[slug] = value as GameProgress;
       }
@@ -169,11 +178,14 @@ function mergePendingData(
 ): AccountData {
   const guides = { ...base.guides };
   let team = base.team;
+  let shinyHunts = base.shinyHunts;
   const gameTeams = { ...base.gameTeams };
 
   for (const [slug, value] of Object.entries(pending)) {
     if (slug === '__team__') {
       team = value as PokemonBasic[];
+    } else if (slug === SHINY_HUNTS_SLUG) {
+      shinyHunts = value as ShinyHunt[];
     } else if (slug.startsWith(GAME_TEAM_PREFIX)) {
       gameTeams[slug.slice(GAME_TEAM_PREFIX.length)] = value as PokemonBasic[];
     } else {
@@ -181,7 +193,7 @@ function mergePendingData(
     }
   }
 
-  return { guides, team, gameTeams };
+  return { guides, team, gameTeams, shinyHunts };
 }
 
 async function readErrorMessage(response: Response): Promise<string> {
@@ -203,11 +215,13 @@ export function AccountProvider({ children }: { children: ReactNode }) {
   const [guides, setGuides] = useState<Record<string, GameProgress>>({});
   const [team, setTeam] = useState<PokemonBasic[]>([]);
   const [gameTeams, setGameTeams] = useState<Record<string, PokemonBasic[]>>({});
+  const [shinyHunts, setShinyHunts] = useState<ShinyHunt[]>([]);
 
   const userRef = useRef<AuthUser | null>(null);
   const guidesRef = useRef<Record<string, GameProgress>>({});
   const teamRef = useRef<PokemonBasic[]>([]);
   const gameTeamsRef = useRef<Record<string, PokemonBasic[]>>({});
+  const shinyHuntsRef = useRef<ShinyHunt[]>([]);
   const pendingRef = useRef(new Map<string, PendingSave>());
   const timersRef = useRef(new Map<string, ReturnType<typeof setTimeout>>());
 
@@ -227,7 +241,11 @@ export function AccountProvider({ children }: { children: ReactNode }) {
     gameTeamsRef.current = gameTeams;
   }, [gameTeams]);
 
-  const persist = useCallback(async (slug: string, data: GameProgress | PokemonBasic[]) => {
+  useEffect(() => {
+    shinyHuntsRef.current = shinyHunts;
+  }, [shinyHunts]);
+
+  const persist = useCallback(async (slug: string, data: PendingSave) => {
     try {
       const response = await fetch('/api/account', {
         method: 'PUT',
@@ -352,6 +370,7 @@ export function AccountProvider({ children }: { children: ReactNode }) {
         guides: data.guides ?? {},
         team: Array.isArray(data.team) ? data.team : [],
         gameTeams: loadedGameTeams,
+        shinyHunts: Array.isArray(data.shinyHunts) ? data.shinyHunts : [],
       };
       const pending = readPending(currentUser.id);
       const merged = pending ? mergePendingData(base, pending) : base;
@@ -364,6 +383,7 @@ export function AccountProvider({ children }: { children: ReactNode }) {
       setGuides(merged.guides);
       setTeam(merged.team);
       setGameTeams(merged.gameTeams);
+      setShinyHunts(merged.shinyHunts);
       writeCache(currentUser.id, merged);
       setSyncError(null);
 
@@ -384,6 +404,7 @@ export function AccountProvider({ children }: { children: ReactNode }) {
         setGuides(merged.guides);
         setTeam(merged.team);
         setGameTeams(merged.gameTeams);
+        setShinyHunts(merged.shinyHunts);
         setSyncError('Modo sin conexión: mostrando la última copia guardada.');
       } else {
         setSyncError('No se pudieron cargar tus datos.');
@@ -489,6 +510,8 @@ export function AccountProvider({ children }: { children: ReactNode }) {
         setRegistrationOpen(false);
         setGuides({});
         setTeam([]);
+        setGameTeams({});
+        setShinyHunts([]);
         return { ok: true };
       } catch {
         return { ok: false, error: 'No se pudo conectar con el servidor.' };
@@ -517,6 +540,7 @@ export function AccountProvider({ children }: { children: ReactNode }) {
     setGuides({});
     setTeam([]);
     setGameTeams({});
+    setShinyHunts([]);
     setSaving(false);
     setSyncError(null);
   }, [flushAll]);
@@ -532,6 +556,7 @@ export function AccountProvider({ children }: { children: ReactNode }) {
           guides: next,
           team: teamRef.current,
           gameTeams: gameTeamsRef.current,
+          shinyHunts: shinyHuntsRef.current,
         });
         return next;
       });
@@ -552,6 +577,7 @@ export function AccountProvider({ children }: { children: ReactNode }) {
         guides: guidesRef.current,
         team: nextTeam,
         gameTeams: gameTeamsRef.current,
+        shinyHunts: shinyHuntsRef.current,
       });
 
       scheduleSave('__team__', nextTeam);
@@ -570,11 +596,31 @@ export function AccountProvider({ children }: { children: ReactNode }) {
           guides: guidesRef.current,
           team: teamRef.current,
           gameTeams: next,
+          shinyHunts: shinyHuntsRef.current,
         });
         return next;
       });
 
       scheduleSave(`__team__:${gameSlug}`, nextTeam);
+    },
+    [scheduleSave]
+  );
+
+  const saveShinyHunts = useCallback(
+    (nextHunts: ShinyHunt[]) => {
+      if (!userRef.current) return;
+
+      setShinyHunts(nextHunts);
+      shinyHuntsRef.current = nextHunts;
+
+      writeCache(userRef.current.id, {
+        guides: guidesRef.current,
+        team: teamRef.current,
+        gameTeams: gameTeamsRef.current,
+        shinyHunts: nextHunts,
+      });
+
+      scheduleSave(SHINY_HUNTS_SLUG, nextHunts);
     },
     [scheduleSave]
   );
@@ -598,11 +644,13 @@ export function AccountProvider({ children }: { children: ReactNode }) {
       setGuides({});
       setTeam([]);
       setGameTeams({});
+      setShinyHunts([]);
       setSaving(false);
       writeCache(userRef.current.id, {
         guides: {},
         team: [],
         gameTeams: {},
+        shinyHunts: [],
       });
       return { ok: true };
     } catch {
@@ -638,12 +686,14 @@ export function AccountProvider({ children }: { children: ReactNode }) {
       guides,
       team,
       gameTeams,
+      shinyHunts,
       login,
       register,
       logout,
       saveGuide,
       saveTeam,
       saveGameTeam,
+      saveShinyHunts,
       resetAll,
       refresh,
     }),
@@ -657,12 +707,14 @@ export function AccountProvider({ children }: { children: ReactNode }) {
       guides,
       team,
       gameTeams,
+      shinyHunts,
       login,
       register,
       logout,
       saveGuide,
       saveTeam,
       saveGameTeam,
+      saveShinyHunts,
       resetAll,
       refresh,
     ]

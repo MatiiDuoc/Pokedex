@@ -2,6 +2,8 @@
 
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
+import { useState } from 'react';
+import { Search, X } from 'lucide-react';
 import { useAccount } from '@/components/AccountProvider';
 import GlobalSearchAutocomplete from '@/components/GlobalSearchAutocomplete';
 import ThemeToggle from '@/components/ThemeToggle';
@@ -11,13 +13,22 @@ const links = [
   { href: '/pokedex', label: 'Pokédex' },
   { href: '/guias', label: 'Guías' },
   { href: '/equipo', label: 'Equipo' },
+  { href: '/shiny', label: 'Shiny' },
   { href: '/buscar', label: 'Buscar' },
   { href: '/cuenta', label: 'Cuenta' },
 ];
 
 export default function SiteHeader() {
   const pathname = usePathname();
-  const { user, authLoading, logout, syncError, registrationOpen } = useAccount();
+  const [mobileSearchOpen, setMobileSearchOpen] = useState(false);
+  const {
+    user,
+    authLoading,
+    logout,
+    saving,
+    syncError,
+    registrationOpen,
+  } = useAccount();
 
   return (
     <header className="sticky top-0 z-50 border-b border-gray-200 bg-white/95 backdrop-blur">
@@ -70,6 +81,21 @@ export default function SiteHeader() {
           </nav>
 
           <div className="flex flex-none items-center gap-2">
+            <button
+              type="button"
+              onClick={() => setMobileSearchOpen((value) => !value)}
+              aria-expanded={mobileSearchOpen}
+              aria-label={
+                mobileSearchOpen ? 'Cerrar búsqueda' : 'Abrir búsqueda'
+              }
+              className="rounded-lg bg-gray-100 p-2 text-gray-600 transition hover:bg-gray-200 lg:hidden"
+            >
+              {mobileSearchOpen ? (
+                <X className="h-4 w-4" />
+              ) : (
+                <Search className="h-4 w-4" />
+              )}
+            </button>
             <ThemeToggle />
             {syncError && (
               <span
@@ -79,6 +105,15 @@ export default function SiteHeader() {
                 role="status"
               >
                 ⚠️
+              </span>
+            )}
+            {saving && !syncError && (
+              <span
+                className="hidden items-center gap-1 text-[10px] font-bold text-amber-600 sm:inline-flex"
+                role="status"
+              >
+                <span className="h-1.5 w-1.5 animate-pulse rounded-full bg-amber-500" />
+                Guardando…
               </span>
             )}
 
@@ -120,6 +155,12 @@ export default function SiteHeader() {
             )}
           </div>
         </div>
+
+        {mobileSearchOpen && (
+          <div className="mt-2 lg:hidden">
+            <GlobalSearchAutocomplete inputId="global-search-mobile" />
+          </div>
+        )}
 
         <div className="mt-2 hidden lg:block">
           <GlobalSearchAutocomplete />

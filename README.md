@@ -114,31 +114,45 @@ checklists por juego, guías paso a paso y visor 3D.
 - **Buscador de la Pokédex con autocompletado**: al escribir aparecen
   sugerencias con imagen, nombre, número y generación; la primera coincide con
   una vista previa destacada. Se puede navegar con teclado.
-- **Pokédex por partida con vistos y capturados**: cada guía separa ambas
-  listas, permite marcar Pokémon vistos, capturados o ambos, y muestra el
-  progreso de cada categoría. Un Pokémon capturado cuenta automáticamente como
-  visto.
 - **Dónde encontrarlo por juego**: desde cada tarjeta de la Pokédex regional se
   consultan las zonas filtradas por la versión del juego, con métodos, niveles y
   probabilidad, además de una nota para la búsqueda shiny. Las zonas se muestran
   en español y, si PokeAPI no tiene datos (Leyendas: Arceus, Escarlata/Púrpura,
   Leyendas: Z-A…), se usa WikiDex como fuente alternativa.
+- **Modo ruta**: cada guía principal incluye una pestaña “Rutas” con las
+  localizaciones del juego, las especies capturables, método, niveles y
+  probabilidad. Permite filtrar por versión y método, buscar, ocultar las ya
+  capturadas y marcar visto/capturado sin salir de la ruta.
+- **Shiny Tracker**: página `/shiny` con cacerías por Pokémon y juego,
+  contador de encuentros, método, Amuleto Shiny, probabilidad acumulada y
+  notas. Se sincroniza con la cuenta y tiene acceso directo desde la ficha de
+  cada Pokémon.
+- **Team Builder 2.0**: sugerencias a partir de las 1025 especies (sin
+  legendarios), análisis de cobertura y debilidades, y preparación contra el
+  próximo gimnasio o desafío con capturas recomendadas.
 - **Filtros avanzados de la Pokédex**: tipo, fuerte contra, débil contra,
   resiste a, especie (iniciales, fósiles, pseudo-legendarios, bebés, paradoja,
   legendarios, míticos y ultraentes), estadística mínima y total de
   estadísticas. Están disponibles tanto en la Pokédex nacional como en la de
   cada partida, y la Pokédex nacional los guarda en la URL.
+- **Progreso por partida con vistos y capturados**: cada guía separa ambas
+  listas, permite marcar Pokémon vistos, capturados o ambos, y muestra el
+  progreso de cada categoría. Un Pokémon capturado cuenta automáticamente como
+  visto. Incluye filtro de pendientes (vistos sin capturar), acciones masivas y
+  paginación.
 - **Filtros de la Pokédex en la URL** (`?q=`, `?type=`, `?gen=`, `?shiny=`…),
   compartibles y persistentes al recargar.
 - **PWA offline**: las páginas visitadas se guardan en caché y hay una página
   `/offline`. Los cambios de progreso pendientes se guardan en una cola local y
   se sincronizan al recuperar la conexión, incluso tras recargar.
-- **Seguridad**: scrypt para contraseñas, tokens de sesión hasheados, cookies
-  httpOnly/SameSite, comprobación de origen, rate limiting en Postgres y
+- **Seguridad**: scrypt para contraseñas, tokens de sesión hasheados, rotación
+  de sesión al iniciar sesión, cookies httpOnly/SameSite, comprobación de
+  origen y `Sec-Fetch-Site`, rate limiting en Postgres por cuenta e IP y
   cabeceras CSP/HSTS.
 - **SEO**: metadatos, sitemap, robots, manifest y páginas estáticas.
 - **Observabilidad**: Vercel Analytics y Speed Insights.
-- **Tests**: Vitest + Testing Library y workflow de CI en GitHub Actions.
+- **Tests**: Vitest + Testing Library, Playwright para flujos críticos y CI en
+  GitHub Actions con CodeQL, Dependabot y auditoría de dependencias.
 
 > Proyecto fan sin afiliación con Nintendo, Game Freak o The Pokémon Company.
 > Datos de Pokémon: [PokeAPI](https://pokeapi.co/). Modelos 3D:
@@ -174,6 +188,7 @@ Comandos:
 npm run lint       # ESLint
 npm run typecheck  # TypeScript
 npm test           # Vitest
+npm run test:e2e   # Playwright (requiere build o servidor en marcha)
 npm run build      # Build de producción
 npm run start      # Servir el build
 npm run db:migrate # Crear/actualizar tablas en Postgres
@@ -213,8 +228,10 @@ Tablas creadas: `users`, `sessions`, `progress` y `rate_limits`.
   filtradas por las versiones de un juego.
 - `/pokedex/[id]` — ficha completa de cada Pokémon (ISR de 7 días).
 - `/equipo` — Team Builder privado global con análisis de tipos.
-- `GET /api/account` — devuelve todas las guías y el equipo del usuario.
-- `PUT /api/account` — guarda `{ slug, data }` (o `__team__` para el equipo).
+- `GET /api/account` — devuelve todas las guías, el equipo, los equipos por
+  juego y las cacerías shiny del usuario.
+- `PUT /api/account` — guarda `{ slug, data }` (o `__team__`, `__team__:<juego>`
+  y `__shiny__` para el equipo y el Shiny Tracker).
 - `DELETE /api/account` — borra todo el progreso del usuario.
 
 ### Registro privado
@@ -281,6 +298,21 @@ npm run data:filters
 
 El cliente lo descarga solo cuando el usuario activa un filtro de tipo,
 habilidad, estadística o efectividad, y luego lo reutiliza desde memoria.
+
+## Encuentros por ruta
+
+`public/encounters/<version-group>.json` contiene las localizaciones, especies,
+métodos, niveles y probabilidad de cada juego cubierto por los CSV de PokeAPI.
+Se carga bajo demanda al abrir la pestaña “Rutas” de una guía y queda disponible
+para la PWA. Se regenera con:
+
+```bash
+npm run data:encounters
+```
+
+Los juegos sin encuentros en PokeAPI (Leyendas: Arceus, Escarlata/Púrpura y
+Leyendas: Z-A) muestran un aviso y remiten a la Pokédex, que usa WikiDex como
+fuente alternativa por Pokémon.
 
 ## Traducciones de PokeAPI
 

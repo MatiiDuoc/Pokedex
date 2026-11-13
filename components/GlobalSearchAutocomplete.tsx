@@ -40,7 +40,11 @@ type FlatItem =
   | { type: 'pokemon'; value: SearchPokemon }
   | { type: 'game'; value: SearchGame };
 
-export default function GlobalSearchAutocomplete() {
+export default function GlobalSearchAutocomplete({
+  inputId = 'global-search',
+}: {
+  inputId?: string;
+}) {
   const router = useRouter();
   const containerRef = useRef<HTMLDivElement>(null);
   const [query, setQuery] = useState('');
@@ -163,19 +167,19 @@ export default function GlobalSearchAutocomplete() {
           }
         }}
       >
-        <label htmlFor="global-search" className="sr-only">
+        <label htmlFor={inputId} className="sr-only">
           Buscar Pokémon o guía
         </label>
         <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-gray-400" />
         <input
-          id="global-search"
+          id={inputId}
           type="search"
           role="combobox"
           aria-autocomplete="list"
           aria-expanded={isOpen}
-          aria-controls="global-search-suggestions"
+          aria-controls={`${inputId}-suggestions`}
           aria-activedescendant={
-            activeIndex >= 0 ? `global-search-item-${activeIndex}` : undefined
+            activeIndex >= 0 ? `${inputId}-item-${activeIndex}` : undefined
           }
           autoComplete="off"
           value={query}
@@ -194,7 +198,10 @@ export default function GlobalSearchAutocomplete() {
       </form>
 
       {isOpen && (
-        <div className="absolute left-0 top-full z-50 mt-2 w-[min(42rem,calc(100vw-2rem))] overflow-hidden rounded-2xl border border-gray-200 bg-white shadow-2xl">
+        <div
+          id={`${inputId}-suggestions`}
+          className="absolute left-0 top-full z-50 mt-2 w-[min(42rem,calc(100vw-2rem))] overflow-hidden rounded-2xl border border-gray-200 bg-white shadow-2xl"
+        >
           {loading && (
             <p className="px-4 py-3 text-xs font-semibold text-gray-400">
               Buscando...
@@ -210,7 +217,7 @@ export default function GlobalSearchAutocomplete() {
           {!loading && featured && (
             <button
               type="button"
-              id="global-search-item-0"
+              id={`${inputId}-item-0`}
               role="option"
               aria-selected={activeIndex === 0}
               onMouseEnter={() => setActiveIndex(0)}
@@ -262,7 +269,7 @@ export default function GlobalSearchAutocomplete() {
                 return (
                   <button
                     key={`pokemon-${pokemon.id}`}
-                    id={`global-search-item-${flatIndex}`}
+                    id={`${inputId}-item-${flatIndex}`}
                     type="button"
                     role="option"
                     aria-selected={activeIndex === flatIndex}
@@ -308,7 +315,7 @@ export default function GlobalSearchAutocomplete() {
                 return (
                   <button
                     key={`game-${game.slug}`}
-                    id={`global-search-item-${flatIndex}`}
+                    id={`${inputId}-item-${flatIndex}`}
                     type="button"
                     role="option"
                     aria-selected={activeIndex === flatIndex}

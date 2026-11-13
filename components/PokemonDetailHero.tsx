@@ -1,8 +1,9 @@
 'use client';
 
 import { useState } from 'react';
+import Link from 'next/link';
 import { usePathname, useRouter } from 'next/navigation';
-import { Box, Check, LogIn, Sparkles } from 'lucide-react';
+import { Box, Check, LogIn, Sparkles, Target } from 'lucide-react';
 import Modal3D from '@/components/Modal3D';
 import { useGameTeam } from '@/components/AccountProvider';
 import { useTeam } from '@/components/TeamProvider';
@@ -210,6 +211,16 @@ export default function PokemonDetailHero({
                 <Sparkles className="h-4 w-4" />
                 {shiny ? 'Ver normal' : 'Ver shiny'}
               </button>
+
+              <Link
+                href={`/shiny?pokemon=${id}${
+                  gameSlug ? `&game=${encodeURIComponent(gameSlug)}` : ''
+                }`}
+                className="inline-flex items-center gap-2 rounded-xl border border-white/30 bg-white/10 px-5 py-3 text-sm font-black text-white backdrop-blur transition hover:bg-white/20"
+              >
+                <Target className="h-4 w-4" />
+                Cazar shiny
+              </Link>
 
               <button
                 type="button"

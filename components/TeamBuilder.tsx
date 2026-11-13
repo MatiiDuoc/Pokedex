@@ -1,23 +1,27 @@
 'use client';
 
 import Link from 'next/link';
-import { useState } from 'react';
+import { useMemo, useState } from 'react';
 import {
   Check,
   Download,
   GripVertical,
+  MapPin,
   Plus,
   ShieldAlert,
   Sparkles,
   Swords,
+  Target,
   Trash2,
   Users,
 } from 'lucide-react';
 import { useAccount } from '@/components/AccountProvider';
 import { useTeam } from '@/components/TeamProvider';
 import {
+  SPANISH_TYPE_TO_KEY,
   TYPE_COLORS,
   formatPokemonName,
+  getGenerationFromId,
   getTypeLabel,
 } from '@/lib/pokemon';
 import {
@@ -26,23 +30,106 @@ import {
 } from '@/lib/team-image';
 import { getTeamSuggestions } from '@/lib/team-suggestions';
 import {
+  getBestOffensiveMultiplier,
+  getDefensiveMultiplier,
   getOffensiveCoverage,
   getTeamWeaknesses,
   getTypeName,
+  isPokemonType,
 } from '@/lib/type-chart';
-import type { PokemonBasic } from '@/types/pokemon';
+import { usePokemonFilters } from '@/lib/usePokemonFilters';
+import type { PokemonFilterEntry } from '@/types/filters';
+import type { PokemonBasic, PokemonIndexEntry } from '@/types/pokemon';
 
-interface TeamBuilderProps {
-  suggestions: PokemonBasic[];
+interface GameGymOption {
+  leader: string;
+  type: string;
+  location: string;
 }
 
-export default function TeamBuilder({ suggestions }: TeamBuilderProps) {
+interface GameOption {
+  slug: string;
+  title: string;
+  gyms: GameGymOption[];
+}
+
+interface TeamBuilderProps {
+  pokemon: PokemonIndexEntry[];
+  games: GameOption[];
+}
+
+function toPokemonBasic(
+  entry: PokemonIndexEntry,
+  filterEntry: PokemonFilterEntry
+): PokemonBasic {
+  return {
+    id: entry.id,
+    name: entry.name,
+    url: '',
+    height: 0,
+    weight: 0,
+    types: filterEntry.types,
+    stats: Object.entries(filterEntry.stats).map(([name, value]) => ({
+      name,
+      value,
+    })),
+    spriteUrl: entry.spriteUrl,
+    shinySpriteUrl: entry.shinySpriteUrl,
+    shinyArtworkUrl: entry.shinyArtworkUrl,
+    model3dUrl: '',
+    generation: getGenerationFromId(entry.id),
+    legendaryCategory: entry.legendaryCategory,
+  };
+}
+
+export default function TeamBuilder({ pokemon, games }: TeamBuilderProps) {
   const { authLoading, user } = useAccount();
   const { team, maxSize, hydrated, remove, move, add, has, isFull } = useTeam();
+  const { data: filterData, loading: filtersLoading } =
+    usePokemonFilters(Boolean(user));
   const [draggedIndex, setDraggedIndex] = useState<number | null>(null);
   const [exporting, setExporting] = useState(false);
   const [exportMessage, setExportMessage] = useState<string | null>(null);
   const [exportTheme, setExportTheme] = useState<TeamImageTheme>('dark');
+  const [gameSlug, setGameSlug] = useState(games[0]?.slug ?? '');
+  const [gymIndex, setGymIndex] = useState(0);
+
+  const filterMap = useMemo(
+    () => new Map((filterData ?? []).map((entry) => [entry.id, entry])),
+    [filterData]
+  );
+
+  const allSuggestions = useMemo(
+    () =>
+      pokemon
+        .map((entry) => {
+          const filterEntry = filterMap.get(entry.id);
+          if (!filterEntry) return null;
+          if (entry.legendaryCategory !== 'none') return null;
+          return {
+            id: entry.id,
+            name: entry.name,
+            spriteUrl: entry.spriteUrl,
+            types: filterEntry.types,
+            filterEntry,
+            entry,
+          };
+        })
+        .filter(
+          (
+            entry
+          ): entry is {
+            id: number;
+            name: string;
+            spriteUrl: string;
+            types: string[];
+            filterEntry: PokemonFilterEntry;
+            entry: PokemonIndexEntry;
+          } => entry !== null
+        ),
+    [filterMap, pokemon]
+  );
+
 
   if (authLoading) {
     return (
@@ -86,10 +173,65 @@ export default function TeamBuilder({ suggestions }: TeamBuilderProps) {
   const coverage = getOffensiveCoverage(team.map((pokemon) => pokemon.types));
   const recommended = getTeamSuggestions(
     team.map((pokemon) => pokemon.types),
-    suggestions,
+    allSuggestions,
     team.map((pokemon) => pokemon.id),
     6
   );
+
+  const selectedGame = games.find((game) => game.slug === gameSlug);
+  const selectedGym = selectedGame?.gyms[gymIndex] ?? null;
+  const gymTypeKey = selectedGym
+    ? SPANISH_TYPE_TO_KEY[
+        selectedGym.type.split('/')[0].trim().toLowerCase()
+      ]
+    : undefined;
+  const gymType = gymTypeKey && isPokemonType(gymTypeKey) ? gymTypeKey : null;
+
+  const gymAnalysis = gymType
+    ? {
+        weak: team.filter(
+          (pokemon) => getDefensiveMultiplier(pokemon.types, gymType) > 1
+        ),
+        resist: team.filter(
+          (pokemon) => getDefensiveMultiplier(pokemon.types, gymType) < 1
+        ),
+        strong: team.filter(
+          (pokemon) =>
+            getBestOffensiveMultiplier(pokemon.types, gymType) > 1
+        ),
+      }
+    : null;
+
+  const gymCounters = gymType
+    ? (() => {
+        const teamIds = new Set(team.map((pokemon) => pokemon.id));
+
+        return allSuggestions
+          .filter((candidate) => !teamIds.has(candidate.id))
+          .map((candidate) => {
+            const offense = getBestOffensiveMultiplier(
+              candidate.types,
+              gymType
+            );
+            const defense = getDefensiveMultiplier(candidate.types, gymType);
+            const score =
+              (offense > 1 ? 2 : 0) +
+              (defense < 1 ? 2 : defense > 1 ? -1 : 0);
+
+            return { ...candidate, gymScore: score };
+          })
+          .filter((candidate) => candidate.gymScore > 0)
+          .sort((a, b) => b.gymScore - a.gymScore || a.id - b.id)
+          .slice(0, 6);
+      })()
+    : [];
+
+  const handleAddSuggestion = (candidate: {
+    entry: PokemonIndexEntry;
+    filterEntry: PokemonFilterEntry;
+  }) => {
+    add(toPokemonBasic(candidate.entry, candidate.filterEntry));
+  };
 
   const handleExport = async () => {
     if (team.length === 0) return;
@@ -247,6 +389,184 @@ export default function TeamBuilder({ suggestions }: TeamBuilderProps) {
         </div>
       )}
 
+      <section className="mt-8 rounded-2xl border border-gray-200 bg-white p-5 shadow-sm">
+        <div className="flex flex-wrap items-end justify-between gap-4">
+          <div>
+            <h2 className="flex items-center gap-2 text-lg font-black text-gray-900">
+              <Target className="h-5 w-5 text-red-600" /> Preparación para el
+              próximo desafío
+            </h2>
+            <p className="mt-1 text-sm text-gray-600">
+              Compara tu equipo con el tipo del próximo gimnasio, prueba o
+              líder.
+            </p>
+          </div>
+
+          <div className="grid w-full gap-2 sm:w-auto sm:grid-cols-2">
+            <label className="text-xs font-bold text-gray-600">
+              Juego
+              <select
+                value={gameSlug}
+                onChange={(event) => {
+                  setGameSlug(event.target.value);
+                  setGymIndex(0);
+                }}
+                className="mt-1 block w-full rounded-lg border border-gray-300 bg-white px-3 py-2 text-sm font-normal text-gray-900 focus:border-red-500 focus:outline-none focus:ring-2 focus:ring-red-200"
+              >
+                {games.map((game) => (
+                  <option key={game.slug} value={game.slug}>
+                    {game.title}
+                  </option>
+                ))}
+              </select>
+            </label>
+
+            <label className="text-xs font-bold text-gray-600">
+              Desafío
+              <select
+                value={gymIndex}
+                onChange={(event) => setGymIndex(Number(event.target.value))}
+                disabled={!selectedGame || selectedGame.gyms.length === 0}
+                className="mt-1 block w-full rounded-lg border border-gray-300 bg-white px-3 py-2 text-sm font-normal text-gray-900 focus:border-red-500 focus:outline-none focus:ring-2 focus:ring-red-200 disabled:bg-gray-100 disabled:text-gray-400"
+              >
+                {(selectedGame?.gyms ?? []).map((gym, index) => (
+                  <option key={`${gym.leader}-${index}`} value={index}>
+                    {gym.leader} · {gym.type}
+                  </option>
+                ))}
+              </select>
+            </label>
+          </div>
+        </div>
+
+        {team.length === 0 ? (
+          <p className="mt-4 rounded-xl bg-gray-50 p-4 text-sm text-gray-500">
+            Añade Pokémon a tu equipo para analizar el próximo desafío.
+          </p>
+        ) : !selectedGym || !gymAnalysis || !gymType ? (
+          <p className="mt-4 rounded-xl bg-gray-50 p-4 text-sm text-gray-500">
+            Este desafío no tiene un tipo definido. Prueba con otro juego o
+            gimnasio.
+          </p>
+        ) : (
+          <>
+            <div className="mt-4 grid gap-3 sm:grid-cols-3">
+              <div className="rounded-xl bg-red-50 p-3">
+                <p className="text-[10px] font-black uppercase tracking-wide text-red-700">
+                  Débiles ante {getTypeName(gymType)}
+                </p>
+                <p className="mt-1 text-2xl font-black text-red-950">
+                  {gymAnalysis.weak.length}
+                </p>
+                <p className="mt-1 text-xs text-red-900/80">
+                  {gymAnalysis.weak.length === 0
+                    ? 'Ninguno: buena base defensiva.'
+                    : gymAnalysis.weak
+                        .map((entry) => formatPokemonName(entry.name))
+                        .join(', ')}
+                </p>
+              </div>
+
+              <div className="rounded-xl bg-green-50 p-3">
+                <p className="text-[10px] font-black uppercase tracking-wide text-green-700">
+                  Resisten {getTypeName(gymType)}
+                </p>
+                <p className="mt-1 text-2xl font-black text-green-950">
+                  {gymAnalysis.resist.length}
+                </p>
+                <p className="mt-1 text-xs text-green-900/80">
+                  {gymAnalysis.resist.length === 0
+                    ? 'Ninguno: considera capturar un resistente.'
+                    : gymAnalysis.resist
+                        .map((entry) => formatPokemonName(entry.name))
+                        .join(', ')}
+                </p>
+              </div>
+
+              <div className="rounded-xl bg-indigo-50 p-3">
+                <p className="text-[10px] font-black uppercase tracking-wide text-indigo-700">
+                  Golpean fuerte a {getTypeName(gymType)}
+                </p>
+                <p className="mt-1 text-2xl font-black text-indigo-950">
+                  {gymAnalysis.strong.length}
+                </p>
+                <p className="mt-1 text-xs text-indigo-900/80">
+                  {gymAnalysis.strong.length === 0
+                    ? 'Ninguno: busca cobertura súper eficaz.'
+                    : gymAnalysis.strong
+                        .map((entry) => formatPokemonName(entry.name))
+                        .join(', ')}
+                </p>
+              </div>
+            </div>
+
+            <p className="mt-3 flex items-center gap-1 text-xs text-gray-500">
+              <MapPin className="h-3.5 w-3.5 text-red-500" />
+              {selectedGym.leader} · {selectedGym.location} · Tipo{' '}
+              {selectedGym.type}
+            </p>
+
+            {gymCounters.length > 0 && (
+              <div className="mt-4">
+                <h3 className="text-sm font-black text-gray-900">
+                  Capturas recomendadas para este desafío
+                </h3>
+                <div className="mt-2 grid gap-2 sm:grid-cols-2 lg:grid-cols-3">
+                  {gymCounters.map((candidate) => {
+                    const alreadyInTeam = has(candidate.id);
+                    return (
+                      <div
+                        key={candidate.id}
+                        className="flex items-center gap-2 rounded-xl border border-gray-200 bg-gray-50 p-2"
+                      >
+                        <Link
+                          href={`/pokedex/${candidate.id}`}
+                          className="flex-none"
+                        >
+                          {/* eslint-disable-next-line @next/next/no-img-element */}
+                          <img
+                            src={candidate.spriteUrl}
+                            alt={formatPokemonName(candidate.name)}
+                            loading="lazy"
+                            className="h-10 w-10 object-contain"
+                          />
+                        </Link>
+                        <div className="min-w-0 flex-1">
+                          <Link
+                            href={`/pokedex/${candidate.id}`}
+                            className="block truncate text-xs font-bold text-gray-900 hover:text-red-600"
+                          >
+                            {formatPokemonName(candidate.name)}
+                          </Link>
+                          <p className="text-[10px] text-gray-500">
+                            {candidate.types.map(getTypeLabel).join(' / ')}
+                          </p>
+                        </div>
+                        <button
+                          type="button"
+                          onClick={() => handleAddSuggestion(candidate)}
+                          disabled={alreadyInTeam || isFull}
+                          aria-label={`Añadir a ${formatPokemonName(
+                            candidate.name
+                          )}`}
+                          className="flex h-8 w-8 flex-none items-center justify-center rounded-full bg-red-600 text-white transition hover:bg-red-700 disabled:cursor-not-allowed disabled:bg-gray-300"
+                        >
+                          {alreadyInTeam ? (
+                            <Check className="h-3.5 w-3.5" />
+                          ) : (
+                            <Plus className="h-3.5 w-3.5" />
+                          )}
+                        </button>
+                      </div>
+                    );
+                  })}
+                </div>
+              </div>
+            )}
+          </>
+        )}
+      </section>
+
       <div className="mt-8 grid gap-4 lg:grid-cols-2">
         <section className="rounded-2xl border border-gray-200 bg-white p-5 shadow-sm">
           <h2 className="flex items-center gap-2 text-lg font-black text-gray-900">
@@ -312,9 +632,15 @@ export default function TeamBuilder({ suggestions }: TeamBuilderProps) {
           debilidades
         </h2>
         <p className="mt-1 text-sm text-gray-600">
-          Pokémon del pool que resisten o son inmunes a los tipos que más dañan a
-          tu equipo.
+          Sugerencias de las 1025 especies (sin legendarios) que resisten o son
+          inmunes a los tipos que más dañan a tu equipo.
         </p>
+
+        {filtersLoading && (
+          <p className="mt-3 text-xs font-semibold text-gray-400">
+            Cargando tipos y estadísticas de todas las especies...
+          </p>
+        )}
 
         {recommended.length === 0 ? (
           <p className="mt-3 rounded-xl bg-gray-50 p-4 text-sm text-gray-500">
@@ -365,7 +691,7 @@ export default function TeamBuilder({ suggestions }: TeamBuilderProps) {
                   </div>
                   <button
                     type="button"
-                    onClick={() => add(candidate)}
+                    onClick={() => handleAddSuggestion(candidate)}
                     disabled={disabled}
                     aria-label={`Añadir a ${formatPokemonName(candidate.name)}`}
                     className="flex h-9 w-9 flex-none items-center justify-center rounded-full bg-red-600 text-white transition hover:bg-red-700 disabled:cursor-not-allowed disabled:bg-gray-300"

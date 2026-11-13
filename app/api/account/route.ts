@@ -4,11 +4,13 @@ import { getDb } from '@/lib/db';
 import { checkRateLimit, RATE_LIMITS } from '@/lib/rate-limit';
 import {
   validateProgressData,
+  validateShinyHunts,
   validateTeamData,
 } from '@/lib/validation';
 import { gamesBySlug } from '@/data/games';
 import type { GameProgress } from '@/types/progress';
 import type { PokemonBasic } from '@/types/pokemon';
+import { SHINY_HUNTS_SLUG, type ShinyHunt } from '@/types/shiny';
 
 export const runtime = 'nodejs';
 export const dynamic = 'force-dynamic';
@@ -69,12 +71,18 @@ export async function GET() {
   const guides: Record<string, GameProgress> = {};
   const gameTeams: Record<string, PokemonBasic[]> = {};
   let team: PokemonBasic[] = [];
+  let shinyHunts: ShinyHunt[] = [];
 
   for (const row of rows as Array<{ slug: string; data: unknown }>) {
     const parsed = parseJsonb(row.data);
 
     if (row.slug === TEAM_SLUG) {
       team = validateTeamData(parsed) ?? [];
+      continue;
+    }
+
+    if (row.slug === SHINY_HUNTS_SLUG) {
+      shinyHunts = validateShinyHunts(parsed) ?? [];
       continue;
     }
 
@@ -91,7 +99,7 @@ export async function GET() {
   }
 
   return NextResponse.json(
-    { guides, team, gameTeams },
+    { guides, team, gameTeams, shinyHunts },
     { headers: { 'Cache-Control': 'no-store' } }
   );
 }
@@ -142,7 +150,7 @@ export async function PUT(request: Request) {
     return NextResponse.json({ error: 'Slug inválido' }, { status: 400 });
   }
 
-  let data: GameProgress | PokemonBasic[];
+  let data: GameProgress | PokemonBasic[] | ShinyHunt[];
 
   if (body.slug === TEAM_SLUG) {
     const team = validateTeamData(body.data);
@@ -150,6 +158,15 @@ export async function PUT(request: Request) {
       return NextResponse.json({ error: 'Equipo inválido' }, { status: 400 });
     }
     data = team;
+  } else if (body.slug === SHINY_HUNTS_SLUG) {
+    const hunts = validateShinyHunts(body.data);
+    if (!hunts) {
+      return NextResponse.json(
+        { error: 'Cacerías shiny inválidas' },
+        { status: 400 }
+      );
+    }
+    data = hunts;
   } else if (body.slug.startsWith(GAME_TEAM_PREFIX)) {
     const gameTeamSlug = parseGameTeamSlug(body.slug);
     if (!gameTeamSlug) {
