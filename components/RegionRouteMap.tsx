@@ -21,6 +21,7 @@ import {
   Target,
   X,
 } from 'lucide-react';
+import TrainerAvatar from './TrainerAvatar';
 import { getGymTypeVisual } from '@/lib/gym-visuals';
 import { getRegionMap } from '@/lib/region-maps';
 import {
@@ -1425,15 +1426,22 @@ export default function RegionRouteMap({
               </button>
             )}
             <div className="flex flex-col items-start gap-3 sm:flex-row sm:items-center">
-              {activeVisual && (
-                // eslint-disable-next-line @next/next/no-img-element
-                <img
-                  src={activeVisual.artworkUrl}
-                  alt={activeVisual.name}
-                  loading="lazy"
-                  className="h-14 w-14 flex-none object-contain"
+              <div className="flex flex-none items-center gap-2">
+                <TrainerAvatar
+                  name={activeGym.leader}
+                  size="md"
+                  className="rounded-xl bg-white/10 px-1 py-0.5 ring-1 ring-white/15"
                 />
-              )}
+                {activeVisual && (
+                  // eslint-disable-next-line @next/next/no-img-element
+                  <img
+                    src={activeVisual.artworkUrl}
+                    alt={activeVisual.name}
+                    loading="lazy"
+                    className="h-12 w-12 flex-none object-contain"
+                  />
+                )}
+              </div>
               <div className="min-w-0 w-full flex-1">
                 <p className="text-[10px] font-black uppercase tracking-widest text-white/60">
                   {statusForGym(

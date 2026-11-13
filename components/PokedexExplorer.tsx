@@ -716,7 +716,7 @@ export default function PokedexExplorer({ pokemon }: PokedexExplorerProps) {
               ? 'Cargando filtros...'
               : `${filtered.length} Pokémon encontrados`}
           </div>
-          <div className="flex items-center gap-2">
+          <div className="flex flex-wrap items-center gap-2">
             <Link
               href="/comparar"
               className="inline-flex items-center gap-2 rounded-full bg-white px-4 py-2 text-sm font-bold text-gray-700 shadow-sm transition hover:bg-gray-50"

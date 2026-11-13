@@ -24,10 +24,11 @@ export default function SiteHeader() {
         <div className="flex items-center justify-between gap-3">
           <Link
             href="/"
-            className="flex flex-none items-center gap-2 text-lg font-black text-gray-900 focus:outline-none focus-visible:ring-2 focus-visible:ring-red-300"
+            aria-label="Pokédex + Guías"
+            className="flex min-w-0 items-center gap-2 text-lg font-black text-gray-900 focus:outline-none focus-visible:ring-2 focus-visible:ring-red-300"
           >
             <span
-              className="relative flex h-9 w-9 items-center justify-center rounded-full bg-red-600"
+              className="relative flex h-9 w-9 flex-none items-center justify-center rounded-full bg-red-600"
               aria-hidden="true"
             >
               <span className="absolute inset-x-0 top-1/2 h-1 -translate-y-1/2 bg-gray-900" />
@@ -35,7 +36,7 @@ export default function SiteHeader() {
                 <span className="absolute inset-0 m-auto h-1.5 w-1.5 rounded-full bg-gray-900" />
               </span>
             </span>
-            <span>
+            <span className="hidden min-[360px]:inline">
               Pokédex<span className="text-red-600">+</span>Guías
             </span>
           </Link>

@@ -31,6 +31,9 @@ checklists por juego, guías paso a paso y visor 3D.
   huevo.
 - **Guías visuales** con mapas SVG ilustrativos de cada región, pines de ruta,
   insignias y un Pokémon representativo del tipo de cada gimnasio.
+- **Sprites de entrenadores**: cada gimnasio, miembro del Alto Mando y campeón
+  muestra la imagen del entrenador (incluidos los líderes compartidos por
+  versión), guardada en local para que la guía funcione sin conexión.
 - **Mapa interactivo 2D/3D** en cada guía: arrastrar, zoom con botones, rueda o
   pellizco, doble toque, pantalla completa, marcadores clicables y ficha del
   gimnasio o paso.

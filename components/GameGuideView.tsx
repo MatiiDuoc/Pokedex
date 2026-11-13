@@ -20,9 +20,11 @@ import GameTeamBuilder from './GameTeamBuilder';
 import GymBadge from './GymBadge';
 import PokedexChecklist from './PokedexChecklist';
 import RegionRouteMap from './RegionRouteMap';
+import TrainerAvatar from './TrainerAvatar';
 import { useAccount } from '@/components/AccountProvider';
 import { getGymBadgeVisual } from '@/lib/gym-badges';
 import { getGymTypeVisual } from '@/lib/gym-visuals';
+import { hasTrainerSprite } from '@/lib/trainer-sprites';
 import { useGameProgress } from '@/lib/progress';
 import {
   SPANISH_TYPE_TO_KEY,
@@ -65,6 +67,7 @@ export default function GameGuideView({
   const [activeTab, setActiveTab] = useState<TabId>('resumen');
   const appliedDeepLink = useRef(false);
   const appliedTabLink = useRef(false);
+  const tabsScrollRef = useRef<HTMLDivElement>(null);
   const { syncError, saving, user } = useAccount();
   const {
     progress,
@@ -112,6 +115,37 @@ export default function GameGuideView({
       `${url.pathname}${url.search}${url.hash}`
     );
   }, []);
+
+  useEffect(() => {
+    const container = tabsScrollRef.current;
+    if (!container) return;
+
+    const active = container.querySelector<HTMLButtonElement>(
+      '[role="tab"][aria-selected="true"]'
+    );
+    if (!active) return;
+
+    const containerRect = container.getBoundingClientRect();
+    const activeRect = active.getBoundingClientRect();
+
+    if (
+      activeRect.left < containerRect.left ||
+      activeRect.right > containerRect.right
+    ) {
+      const reduceMotion = window.matchMedia(
+        '(prefers-reduced-motion: reduce)'
+      ).matches;
+
+      container.scrollTo({
+        left:
+          container.scrollLeft +
+          activeRect.left -
+          containerRect.left -
+          8,
+        behavior: reduceMotion ? 'auto' : 'smooth',
+      });
+    }
+  }, [activeTab]);
 
   useEffect(() => {
     if (appliedTabLink.current) return;
@@ -307,7 +341,10 @@ export default function GameGuideView({
         const reduceMotion = window.matchMedia(
           '(prefers-reduced-motion: reduce)'
         ).matches;
-        const top = element.getBoundingClientRect().top + window.scrollY - 120;
+        const top =
+          element.getBoundingClientRect().top +
+          window.scrollY -
+          getGuideScrollOffset();
 
         window.scrollTo({
           top,
@@ -330,7 +367,10 @@ export default function GameGuideView({
       const reduceMotion = window.matchMedia(
         '(prefers-reduced-motion: reduce)'
       ).matches;
-      const top = element.getBoundingClientRect().top + window.scrollY - 120;
+      const top =
+        element.getBoundingClientRect().top +
+        window.scrollY -
+        getGuideScrollOffset();
 
       window.scrollTo({ top, behavior: reduceMotion ? 'auto' : 'smooth' });
       element.focus({ preventScroll: true });
@@ -642,32 +682,42 @@ export default function GameGuideView({
           </section>
         )}
 
-        <div className="sticky top-16 z-20 mt-5 -mx-4 border-y border-gray-200 bg-white/95 px-4 backdrop-blur">
-          <div className="mx-auto flex max-w-6xl gap-1 overflow-x-auto py-2" role="tablist" aria-label="Secciones de la guía">
-            {tabs.map((tab) => (
-              <button
-                key={tab.id}
-                type="button"
-                role="tab"
-                id={`tab-${tab.id}`}
-                aria-selected={activeTab === tab.id}
-                aria-controls={`panel-${tab.id}`}
-                onClick={() => selectTab(tab.id)}
-                className={`whitespace-nowrap rounded-lg px-3 py-2 text-sm font-bold transition focus:outline-none focus-visible:ring-2 focus-visible:ring-red-300 ${
-                  activeTab === tab.id
-                    ? 'bg-red-600 text-white'
-                    : 'text-gray-700 hover:bg-gray-100'
-                }`}
-              >
-                {tab.label}
-              </button>
-            ))}
+        <div
+          id="guide-tabs"
+          className="sticky top-[61px] z-30 mt-5 -mx-4 border-y border-gray-200 bg-white/95 px-4 backdrop-blur lg:top-[107px]"
+        >
+          <div className="mx-auto flex max-w-6xl items-center gap-2 py-2">
+            <div
+              ref={tabsScrollRef}
+              className="flex min-w-0 flex-1 gap-1 overflow-x-auto"
+              role="tablist"
+              aria-label="Secciones de la guía"
+            >
+              {tabs.map((tab) => (
+                <button
+                  key={tab.id}
+                  type="button"
+                  role="tab"
+                  id={`tab-${tab.id}`}
+                  aria-selected={activeTab === tab.id}
+                  aria-controls={`panel-${tab.id}`}
+                  onClick={() => selectTab(tab.id)}
+                  className={`whitespace-nowrap rounded-lg px-3 py-2 text-sm font-bold transition focus:outline-none focus-visible:ring-2 focus-visible:ring-red-300 ${
+                    activeTab === tab.id
+                      ? 'bg-red-600 text-white'
+                      : 'text-gray-700 hover:bg-gray-100'
+                  }`}
+                >
+                  {tab.label}
+                </button>
+              ))}
+            </div>
             <button
               type="button"
               onClick={handleReset}
-              className="ml-auto whitespace-nowrap rounded-lg px-3 py-2 text-sm font-semibold text-gray-500 transition hover:bg-gray-100 hover:text-red-600 focus:outline-none focus-visible:ring-2 focus-visible:ring-red-300"
+              className="flex-none whitespace-nowrap rounded-lg border border-gray-200 px-2.5 py-2 text-xs font-semibold text-gray-500 transition hover:bg-gray-100 hover:text-red-600 focus:outline-none focus-visible:ring-2 focus-visible:ring-red-300 sm:border-0 sm:px-3 sm:text-sm"
             >
-              Reiniciar progreso
+              Reiniciar<span className="hidden lg:inline"> progreso</span>
             </button>
           </div>
         </div>
@@ -1107,7 +1157,7 @@ export default function GameGuideView({
                     a su combate.
                   </p>
 
-                  <div className="mt-3 grid grid-cols-4 gap-2 sm:grid-cols-8">
+                  <div className="mt-3 grid grid-cols-4 gap-2 md:grid-cols-8">
                     {game.gyms.map((challenge, index) => {
                       const challengeDone = progress.checklist.includes(
                         `challenge:${index}`
@@ -1122,11 +1172,12 @@ export default function GameGuideView({
                         <button
                           key={`badge-${challenge.leader}-${index}`}
                           type="button"
+                          title={`${challenge.leader} · ${challenge.badge}`}
                           onClick={() => goToGym(index)}
                           aria-label={`${challenge.badge}: ${
                             challengeDone ? 'conseguida' : 'pendiente'
                           }. Ir al combate contra ${challenge.leader}`}
-                          className={`group flex flex-col items-center gap-1 rounded-xl border px-1 py-2 text-center transition ${
+                          className={`group flex min-w-0 flex-col items-center gap-1 rounded-xl border px-1 py-2 text-center transition ${
                             challengeDone
                               ? 'border-amber-300 bg-amber-50 hover:bg-amber-100'
                               : 'border-dashed border-gray-200 bg-gray-50 hover:border-red-200 hover:bg-white'
@@ -1138,7 +1189,7 @@ export default function GameGuideView({
                             size="md"
                             showLock={!challengeDone}
                           />
-                          <span className="w-full truncate text-[10px] font-bold text-gray-700">
+                          <span className="w-full text-[10px] font-bold leading-tight text-gray-700">
                             {challenge.leader}
                           </span>
                           <span
@@ -1162,6 +1213,7 @@ export default function GameGuideView({
               <div className="grid gap-4 md:grid-cols-2">
                 {game.gyms.map((challenge, index) => {
                   const visual = getGymTypeVisual(challenge.type);
+                  const hasTrainer = hasTrainerSprite(challenge.leader);
                   const badgeVisual = getGymBadgeVisual(
                     game.slug,
                     index,
@@ -1187,42 +1239,72 @@ export default function GameGuideView({
                       challengeDone ? 'border-amber-200' : 'border-transparent'
                     }`}
                   >
-                    <div className="flex items-start justify-between gap-3">
-                      <div className="flex items-center gap-3">
-                        {visual && (
-                          // eslint-disable-next-line @next/next/no-img-element
-                          <img
-                            src={visual.artworkUrl}
-                            alt={visual.name}
-                            loading="lazy"
-                            className="h-12 w-12 flex-none object-contain"
+                    <div className="flex flex-wrap items-start justify-between gap-x-3 gap-y-2">
+                      <div className="flex min-w-[13rem] flex-1 items-center gap-3">
+                        {hasTrainer ? (
+                          <TrainerAvatar
+                            name={challenge.leader}
+                            size="md"
+                            className="min-w-14"
                           />
+                        ) : (
+                          visual && (
+                            // eslint-disable-next-line @next/next/no-img-element
+                            <img
+                              src={visual.artworkUrl}
+                              alt={visual.name}
+                              loading="lazy"
+                              className="h-12 w-12 flex-none object-contain"
+                            />
+                          )
                         )}
-                        <span className="flex h-9 w-9 flex-none items-center justify-center rounded-full bg-gray-900 text-sm font-black text-white">
-                          {index + 1}
-                        </span>
-                        <div>
-                          <h3 className="text-lg font-bold text-gray-900">
-                            {challenge.leader}
-                          </h3>
-                          <p className="text-xs font-semibold text-gray-500">
+                        <div className="min-w-0">
+                          <div className="flex min-w-0 items-center gap-2">
+                            <span className="flex h-6 w-6 flex-none items-center justify-center rounded-full bg-gray-900 text-[10px] font-black text-white">
+                              {index + 1}
+                            </span>
+                            <h3
+                              className="truncate text-lg font-bold text-gray-900"
+                              title={challenge.leader}
+                            >
+                              {challenge.leader}
+                            </h3>
+                          </div>
+                          <p className="truncate text-xs font-semibold text-gray-500">
                             {challenge.location}
                           </p>
                         </div>
                       </div>
-                      <div className="flex items-center gap-1.5">
+                      <div className="ml-auto flex flex-none items-center gap-1.5">
                         <GymBadge
                           visual={badgeVisual}
                           obtained={challengeDone}
                           size="sm"
                         />
-                        <span className="inline-flex items-center rounded-full bg-gray-100 px-2.5 py-1 text-xs font-bold text-gray-700">
+                        <span
+                          title={challenge.badge}
+                          className="inline-flex items-center rounded-full bg-gray-100 px-2.5 py-1 text-xs font-bold text-gray-700"
+                        >
                           {challenge.badge}
                         </span>
                       </div>
                     </div>
 
                     <div className="mt-3 flex items-center gap-2">
+                      {hasTrainer && visual && (
+                        <span
+                          className="flex h-7 w-7 flex-none items-center justify-center rounded-full bg-gray-100"
+                          aria-hidden="true"
+                        >
+                          {/* eslint-disable-next-line @next/next/no-img-element */}
+                          <img
+                            src={visual.artworkUrl}
+                            alt=""
+                            loading="lazy"
+                            className="h-6 w-6 object-contain"
+                          />
+                        </span>
+                      )}
                       <span
                         className={`h-3 w-3 rounded-full ${getTypeColorByLabel(challenge.type)}`}
                         aria-hidden="true"
@@ -1337,27 +1419,46 @@ export default function GameGuideView({
                         key={member.name}
                         className="rounded-xl bg-gray-50 p-4 text-center"
                       >
+                        <TrainerAvatar
+                          name={member.name}
+                          size="lg"
+                          className="mx-auto mb-2"
+                        />
                         <p className="font-bold text-gray-900">{member.name}</p>
                         <p className="mt-1 text-sm text-gray-600">{member.type}</p>
                       </div>
                     ))}
                   </div>
 
-                  <div className="mt-4 rounded-xl bg-gradient-to-r from-red-600 to-orange-500 p-4 text-white">
-                    <p className="text-xs font-bold uppercase tracking-wide text-white/80">
-                      Campeón / jefe final
-                    </p>
-                    <p className="mt-1 text-xl font-black">{game.champion}</p>
+                  <div className="mt-4 flex items-center justify-between gap-4 rounded-xl bg-gradient-to-r from-red-600 to-orange-500 p-4 text-white">
+                    <div className="min-w-0">
+                      <p className="text-xs font-bold uppercase tracking-wide text-white/80">
+                        Campeón / jefe final
+                      </p>
+                      <p className="mt-1 text-xl font-black">{game.champion}</p>
+                    </div>
+                    <TrainerAvatar
+                      name={game.champion}
+                      size="lg"
+                      className="flex-none"
+                    />
                   </div>
                 </div>
               )}
 
               {game.eliteFour.length === 0 && (
-                <div className="rounded-2xl bg-gradient-to-r from-red-600 to-orange-500 p-5 text-white">
-                  <p className="text-xs font-bold uppercase tracking-wide text-white/80">
-                    Jefe final
-                  </p>
-                  <p className="mt-1 text-xl font-black">{game.champion}</p>
+                <div className="flex items-center justify-between gap-4 rounded-2xl bg-gradient-to-r from-red-600 to-orange-500 p-5 text-white">
+                  <div className="min-w-0">
+                    <p className="text-xs font-bold uppercase tracking-wide text-white/80">
+                      Jefe final
+                    </p>
+                    <p className="mt-1 text-xl font-black">{game.champion}</p>
+                  </div>
+                  <TrainerAvatar
+                    name={game.champion}
+                    size="lg"
+                    className="flex-none"
+                  />
                 </div>
               )}
             </section>
@@ -1460,6 +1561,17 @@ export default function GameGuideView({
       </div>
     </div>
   );
+}
+
+function getGuideScrollOffset(): number {
+  if (typeof window === 'undefined') return 120;
+
+  const headerHeight =
+    document.querySelector('header')?.getBoundingClientRect().height ?? 61;
+  const tabsHeight =
+    document.getElementById('guide-tabs')?.getBoundingClientRect().height ?? 54;
+
+  return Math.ceil(headerHeight + tabsHeight + 12);
 }
 
 function normalizeSearchText(value: string): string {

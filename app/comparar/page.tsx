@@ -92,7 +92,7 @@ export default async function ComparePage({ searchParams }: ComparePageProps) {
 
         <form
           action="/comparar"
-          className="mx-auto mt-6 grid max-w-5xl gap-3 sm:grid-cols-[1fr_1fr_1fr_auto]"
+          className="mx-auto mt-6 grid max-w-5xl gap-3 sm:grid-cols-2 md:grid-cols-[1fr_1fr_1fr_auto]"
         >
           <div>
             <label htmlFor="compare-a" className="sr-only">
@@ -135,7 +135,7 @@ export default async function ComparePage({ searchParams }: ComparePageProps) {
           </div>
           <button
             type="submit"
-            className="rounded-xl bg-indigo-600 px-6 py-3 text-sm font-bold text-white transition hover:bg-indigo-700"
+            className="rounded-xl bg-indigo-600 px-6 py-3 text-sm font-bold text-white transition hover:bg-indigo-700 sm:col-span-2 md:col-span-1"
           >
             Comparar
           </button>
@@ -162,7 +162,7 @@ export default async function ComparePage({ searchParams }: ComparePageProps) {
             </p>
           </div>
         ) : (
-          <div className="mt-8 grid gap-5 md:grid-cols-3">
+          <div className="mt-8 grid gap-5 md:grid-cols-2 xl:grid-cols-3">
             {first ? (
               <ComparisonCard detail={first} all={details} />
             ) : (
@@ -239,13 +239,15 @@ function ComparisonCard({
           <img
             src={detail.artworkUrl}
             alt={formatPokemonName(detail.name)}
-            className="h-28 w-28 object-contain drop-shadow-xl"
+            className="h-28 w-28 flex-none object-contain drop-shadow-xl"
           />
-          <div>
+          <div className="min-w-0">
             <p className="text-xs font-black uppercase tracking-widest text-white/70">
               #{detail.id.toString().padStart(4, '0')}
             </p>
-            <h2 className="text-2xl font-black">{formatPokemonName(detail.name)}</h2>
+            <h2 className="break-words text-2xl font-black">
+              {formatPokemonName(detail.name)}
+            </h2>
             <div className="mt-2 flex flex-wrap gap-1">
               {detail.types.map((type) => (
                 <span

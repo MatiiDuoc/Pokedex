@@ -77,15 +77,18 @@ export default function Modal3D({ pokemon, onClose }: Modal3DProps) {
           role="dialog"
           aria-modal="true"
           aria-labelledby="pokemon-modal-title"
-          className={`relative w-full rounded-2xl bg-white shadow-2xl transition-all ${
+          className={`relative max-h-[calc(100dvh-2rem)] w-full overflow-y-auto rounded-2xl bg-white shadow-2xl transition-all ${
             isFullscreen ? 'max-w-[96vw]' : 'max-w-3xl'
           }`}
         >
-          <div className="flex items-center justify-between border-b border-gray-200 px-6 py-4">
-            <h2 id="pokemon-modal-title" className="text-2xl font-bold text-gray-900">
+          <div className="flex flex-wrap items-center justify-between gap-2 border-b border-gray-200 px-4 py-3 sm:gap-3 sm:px-6 sm:py-4">
+            <h2
+              id="pokemon-modal-title"
+              className="min-w-0 max-w-full truncate text-xl font-bold text-gray-900 sm:text-2xl"
+            >
               {formatPokemonName(pokemon.name)}
             </h2>
-            <div className="flex items-center gap-2">
+            <div className="flex flex-wrap items-center gap-1.5 sm:gap-2">
               <div className="flex rounded-lg bg-gray-100 p-0.5" role="group" aria-label="Vista de la ficha">
                 <button
                   type="button"
@@ -113,7 +116,7 @@ export default function Modal3D({ pokemon, onClose }: Modal3DProps) {
                   type="button"
                   onClick={() => setModelShiny((value) => !value)}
                   aria-pressed={modelShiny}
-                  className={`rounded-md px-2.5 py-1.5 text-xs font-bold transition ${
+                  className={`whitespace-nowrap rounded-md px-2.5 py-1.5 text-xs font-bold transition ${
                     modelShiny
                       ? 'bg-gradient-to-r from-yellow-300 to-amber-400 text-amber-950'
                       : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
@@ -148,10 +151,10 @@ export default function Modal3D({ pokemon, onClose }: Modal3DProps) {
             </div>
           </div>
 
-          <div className="p-6">
+          <div className="p-4 sm:p-6">
             <div
               className={`relative overflow-hidden rounded-xl bg-gradient-to-br ${gradient} transition-all ${
-                isFullscreen ? 'h-[70vh]' : 'h-96'
+                isFullscreen ? 'h-[70vh]' : 'h-72 sm:h-96'
               }`}
             >
               <div className="pointer-events-none absolute inset-0 bg-white/55" />

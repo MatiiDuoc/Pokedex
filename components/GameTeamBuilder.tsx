@@ -19,8 +19,10 @@ import {
   Trash2,
   Users,
 } from 'lucide-react';
+import TrainerAvatar from './TrainerAvatar';
 import { useAccount, useGameTeam } from '@/components/AccountProvider';
 import { getGymTypeVisual } from '@/lib/gym-visuals';
+import { hasTrainerSprite } from '@/lib/trainer-sprites';
 import {
   SPANISH_TYPE_TO_KEY,
   TYPE_COLORS,
@@ -974,7 +976,20 @@ export default function GameTeamBuilder({
                   className="rounded-xl border border-gray-200 bg-gray-50 p-3"
                 >
                   <div className="flex items-start gap-3">
-                    {prep.visual ? (
+                    {hasTrainerSprite(prep.gym.leader) ? (
+                      <div className="flex flex-none items-center gap-1">
+                        <TrainerAvatar name={prep.gym.leader} size="sm" />
+                        {prep.visual && (
+                          /* eslint-disable-next-line @next/next/no-img-element */
+                          <img
+                            src={prep.visual.artworkUrl}
+                            alt={prep.visual.name}
+                            loading="lazy"
+                            className="h-10 w-10 object-contain"
+                          />
+                        )}
+                      </div>
+                    ) : prep.visual ? (
                       /* eslint-disable-next-line @next/next/no-img-element */
                       <img
                         src={prep.visual.artworkUrl}

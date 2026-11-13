@@ -94,12 +94,12 @@ export default function PokemonCard({ pokemon, shiny = false }: PokemonCardProps
         />
 
         <div className="relative p-6">
-          <div className="mb-4 flex items-start justify-between gap-3">
-            <div>
-              <h2 className="text-2xl font-black text-gray-900">
+          <div className="mb-4 flex items-start justify-between gap-2">
+            <div className="min-w-0 flex-1">
+              <h2 className="break-words text-xl font-black text-gray-900 sm:text-2xl">
                 {formatPokemonName(pokemon.name)}
               </h2>
-              <div className="flex items-center gap-2">
+              <div className="flex flex-wrap items-center gap-1.5">
                 <p className="text-sm font-semibold text-gray-500">
                   #{pokemon.id.toString().padStart(3, '0')}
                 </p>
@@ -120,7 +120,7 @@ export default function PokemonCard({ pokemon, shiny = false }: PokemonCardProps
                 )}
               </div>
             </div>
-            <div className="flex flex-col items-end gap-1">
+            <div className="flex flex-none flex-col items-end gap-1">
               {pokemon.types.map((type) => (
                 <span
                   key={type}
