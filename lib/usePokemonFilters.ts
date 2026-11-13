@@ -38,18 +38,22 @@ export function usePokemonFilters(enabled: boolean): {
   const [loading, setLoading] = useState(false);
 
   useEffect(() => {
-    if (!enabled || cache) return;
+    if (!enabled) return;
 
     let cancelled = false;
-    // La carga es una sincronización con un recurso externo.
-    // eslint-disable-next-line react-hooks/set-state-in-effect
-    setLoading(true);
+
+    if (!cache) {
+      // La carga es una sincronización con un recurso externo.
+      // eslint-disable-next-line react-hooks/set-state-in-effect
+      setLoading(true);
+    }
 
     loadFilters()
       .then((entries) => {
         if (!cancelled) setData(entries);
       })
-      .catch(() => {
+      .catch((error) => {
+        console.error('No se pudieron cargar los filtros:', error);
         if (!cancelled) setData(null);
       })
       .finally(() => {

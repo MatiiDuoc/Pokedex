@@ -16,6 +16,7 @@
     "users:password": "node --env-file=.env.local scripts/user-admin.mjs password",
     "users:delete": "node --env-file=.env.local scripts/user-admin.mjs delete",
     "data:filters": "node scripts/generate-pokemon-filters.mjs",
+    "data:locations": "node scripts/generate-location-names.mjs",
     "data:moves": "node scripts/generate-move-names.mjs",
     "data:versions": "node scripts/generate-version-names.mjs"
   },

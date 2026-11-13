@@ -119,8 +119,15 @@ checklists por juego, guías paso a paso y visor 3D.
   progreso de cada categoría. Un Pokémon capturado cuenta automáticamente como
   visto.
 - **Dónde encontrarlo por juego**: desde cada tarjeta de la Pokédex regional se
-  consultan las zonas de PokeAPI filtradas por la versión del juego, con
-  métodos, niveles y probabilidad, además de una nota para la búsqueda shiny.
+  consultan las zonas filtradas por la versión del juego, con métodos, niveles y
+  probabilidad, además de una nota para la búsqueda shiny. Las zonas se muestran
+  en español y, si PokeAPI no tiene datos (Leyendas: Arceus, Escarlata/Púrpura,
+  Leyendas: Z-A…), se usa WikiDex como fuente alternativa.
+- **Filtros avanzados de la Pokédex**: tipo, fuerte contra, débil contra,
+  resiste a, especie (iniciales, fósiles, pseudo-legendarios, bebés, paradoja,
+  legendarios, míticos y ultraentes), estadística mínima y total de
+  estadísticas. Están disponibles tanto en la Pokédex nacional como en la de
+  cada partida, y la Pokédex nacional los guarda en la URL.
 - **Filtros de la Pokédex en la URL** (`?q=`, `?type=`, `?gen=`, `?shiny=`…),
   compartibles y persistentes al recargar.
 - **PWA offline**: las páginas visitadas se guardan en caché y hay una página
@@ -273,22 +280,28 @@ npm run data:filters
 ```
 
 El cliente lo descarga solo cuando el usuario activa un filtro de tipo,
-habilidad o estadística, y luego lo reutiliza desde memoria.
+habilidad, estadística o efectividad, y luego lo reutiliza desde memoria.
 
 ## Traducciones de PokeAPI
 
-PokeAPI devuelve los nombres de movimientos y versiones en inglés. El proyecto
-genera mapas estáticos en español desde sus CSV oficiales:
+PokeAPI devuelve los nombres de movimientos, versiones y zonas en inglés. El
+proyecto genera mapas estáticos en español desde sus CSV oficiales y WikiDex:
 
 ```bash
 npm run data:moves
 npm run data:versions
+npm run data:locations
 ```
 
 - `lib/move-names-es.json` — 937 movimientos traducidos. Lo usan la API de
   movimientos y las evoluciones que requieren conocer un ataque.
 - `lib/version-names-es.json` — versiones de los juegos para la sección
   “Dónde encontrarlo”.
+- `lib/location-areas.json` — relación entre cada área de PokeAPI y su
+  localización base (incluye pisos, cuevas y subzonas).
+- `lib/location-names-es.json` — nombres de localizaciones en español tomados
+  de la lista multilingüe de WikiDex, con variantes para rutas, ciudades y
+  pueblos. `npm run data:locations` regenera ambos archivos.
 
 ## Modelos 3D
 

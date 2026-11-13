@@ -1,3 +1,8 @@
+import {
+  translateEncounterMethod,
+  translateLocationName,
+} from '@/lib/location-names';
+
 const POKEAPI_BASE = 'https://pokeapi.co/api/v2';
 const REVALIDATE_SECONDS = 60 * 60 * 24 * 7;
 const TIMEOUT_MS = 20_000;
@@ -22,6 +27,7 @@ interface EncounterResponse {
 }
 
 export interface EncounterLocation {
+  locationId: string;
   location: string;
   methods: string[];
   levels: string;
@@ -78,16 +84,17 @@ export async function getPokemonEncounters(
     for (const entry of data) {
       for (const versionDetail of entry.version_details) {
         const version = versionDetail.version.name;
-        const location = entry.location_area.name;
+        const locationId = entry.location_area.name;
+        const location = translateLocationName(locationId);
 
         if (!versions.has(version)) versions.set(version, new Map());
         const locations = versions.get(version)!;
 
-        const existing = locations.get(location);
+        const existing = locations.get(locationId);
         const methods = Array.from(
           new Set(
             versionDetail.encounter_details.map((detail) =>
-              detail.method.name.replace(/-/g, ' ')
+              translateEncounterMethod(detail.method.name)
             )
           )
         );
@@ -114,7 +121,8 @@ export async function getPokemonEncounters(
           ).join(', ');
           existing.chance = chance;
         } else {
-          locations.set(location, {
+          locations.set(locationId, {
+            locationId,
             location,
             methods,
             levels,

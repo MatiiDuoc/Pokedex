@@ -9,21 +9,38 @@ import {
 } from 'react';
 import {
   Check,
+  ExternalLink,
   Eye,
   Loader2,
   MapPin,
+  SlidersHorizontal,
   Sparkles,
   X,
 } from 'lucide-react';
 import Pagination from './Pagination';
 import versionNamesEs from '@/lib/version-names-es.json';
 import {
+  EMPTY_ADVANCED_FILTERS,
+  countActiveAdvancedFilters,
+  hasActiveAdvancedFilters,
+  matchesAdvancedFilters,
+  type AdvancedPokemonFilters,
+} from '@/lib/advanced-filters';
+import {
+  SPECIES_CATEGORY_OPTIONS,
+  type SpeciesCategory,
+} from '@/lib/pokemon-categories';
+import {
+  TYPE_LABELS,
   formatDexNumber,
   formatPokemonName,
   getGenerationFromId,
   getLegendaryLabel,
+  getStatLabel,
 } from '@/lib/pokemon';
+import { usePokemonFilters } from '@/lib/usePokemonFilters';
 import type { VersionEncounters } from '@/services/pokemonEncounters';
+import type { WikidexFallback } from '@/services/wikidexEncounters';
 import type { PokemonIndexEntry } from '@/types/pokemon';
 
 const VERSION_NAMES_ES = versionNamesEs as Record<string, string>;
@@ -43,8 +60,17 @@ interface PokedexChecklistProps {
 }
 
 const ITEMS_PER_PAGE = 60;
+const STAT_OPTIONS = [
+  'hp',
+  'attack',
+  'defense',
+  'special-attack',
+  'special-defense',
+  'speed',
+] as const;
+const MIN_STAT_OPTIONS = [50, 75, 100, 120, 150, 180];
+const MIN_TOTAL_OPTIONS = [300, 400, 500, 600, 680];
 type StatusFilter = 'all' | 'seen' | 'caught' | 'missing';
-
 export default function PokedexChecklist({
   pokemon,
   caught,
@@ -62,16 +88,50 @@ export default function PokedexChecklist({
   const [status, setStatus] = useState<StatusFilter>('all');
   const [shiny, setShiny] = useState(false);
   const [page, setPage] = useState(1);
+  const [showAdvanced, setShowAdvanced] = useState(false);
+  const [type, setType] = useState('');
+  const [weakTo, setWeakTo] = useState('');
+  const [resists, setResists] = useState('');
+  const [strongAgainst, setStrongAgainst] = useState('');
+  const [species, setSpecies] = useState<SpeciesCategory>('all');
+  const [stat, setStat] = useState('');
+  const [minStat, setMinStat] = useState('100');
+  const [minTotal, setMinTotal] = useState('0');
   const [lookupId, setLookupId] = useState<number | null>(null);
   const [encounters, setEncounters] = useState<VersionEncounters[] | null>(
     null
   );
+  const [alternative, setAlternative] = useState<WikidexFallback | null>(null);
   const [lookupLoading, setLookupLoading] = useState(false);
   const [lookupError, setLookupError] = useState<string | null>(null);
 
   const deferredQuery = useDeferredValue(query.trim().toLowerCase());
   const caughtSet = useMemo(() => new Set(caught), [caught]);
   const seenSet = useMemo(() => new Set(seen), [seen]);
+
+  const advancedFilters = useMemo<AdvancedPokemonFilters>(
+    () => ({
+      type,
+      weakTo,
+      resists,
+      strongAgainst,
+      species,
+      stat,
+      minStat: Number(minStat),
+      minTotal: Number(minTotal),
+    }),
+    [type, weakTo, resists, strongAgainst, species, stat, minStat, minTotal]
+  );
+  const advancedFiltersEnabled = hasActiveAdvancedFilters(advancedFilters);
+  const { data: filterData, loading: filtersLoading } = usePokemonFilters(
+    showAdvanced || advancedFiltersEnabled
+  );
+  const filtersReady = !advancedFiltersEnabled || filterData !== null;
+  const filterMap = useMemo(
+    () => new Map((filterData ?? []).map((entry) => [entry.id, entry])),
+    [filterData]
+  );
+  const activeFilterCount = countActiveAdvancedFilters(advancedFilters);
 
   const filtered = useMemo(() => {
     return pokemon.filter((entry) => {
@@ -81,12 +141,27 @@ export default function PokedexChecklist({
         entry.id.toString().includes(deferredQuery);
 
       if (!matchesQuery) return false;
-      if (status === 'seen') return seenSet.has(entry.id);
-      if (status === 'caught') return caughtSet.has(entry.id);
-      if (status === 'missing') return !seenSet.has(entry.id);
-      return true;
+      if (status === 'seen' && !seenSet.has(entry.id)) return false;
+      if (status === 'caught' && !caughtSet.has(entry.id)) return false;
+      if (status === 'missing' && seenSet.has(entry.id)) return false;
+
+      return matchesAdvancedFilters(
+        entry,
+        filterMap.get(entry.id),
+        advancedFilters,
+        filtersReady
+      );
     });
-  }, [pokemon, deferredQuery, status, seenSet, caughtSet]);
+  }, [
+    pokemon,
+    deferredQuery,
+    status,
+    seenSet,
+    caughtSet,
+    filterMap,
+    advancedFilters,
+    filtersReady,
+  ]);
 
   const seenInGame = pokemon.filter((entry) => seenSet.has(entry.id)).length;
   const caughtInGame = pokemon.filter((entry) => caughtSet.has(entry.id)).length;
@@ -121,6 +196,7 @@ export default function PokedexChecklist({
   const openEncounters = async (entry: PokemonIndexEntry) => {
     setLookupId(entry.id);
     setEncounters(null);
+    setAlternative(null);
     setLookupError(null);
 
     if (!versionGroup) {
@@ -140,8 +216,10 @@ export default function PokedexChecklist({
       if (!response.ok) throw new Error('No se pudieron cargar las zonas');
       const data = (await response.json()) as {
         encounters?: VersionEncounters[];
+        alternative?: WikidexFallback | null;
       };
       setEncounters(data.encounters ?? []);
+      setAlternative(data.alternative ?? null);
     } catch {
       setLookupError('No se pudieron cargar las zonas de encuentro.');
     } finally {
@@ -163,6 +241,22 @@ export default function PokedexChecklist({
     { id: 'caught', label: 'Capturados' },
     { id: 'missing', label: 'Sin ver' },
   ];
+
+  const resetAdvancedFilters = () => {
+    const empty = EMPTY_ADVANCED_FILTERS;
+    setType(empty.type);
+    setWeakTo(empty.weakTo);
+    setResists(empty.resists);
+    setStrongAgainst(empty.strongAgainst);
+    setSpecies(empty.species);
+    setStat(empty.stat);
+    setMinStat(empty.minStat.toString());
+    setMinTotal(empty.minTotal.toString());
+    setPage(1);
+  };
+
+  const selectClass =
+    'w-full rounded-lg border border-gray-300 bg-white px-3 py-2.5 text-sm text-gray-900 focus:border-red-500 focus:outline-none focus:ring-2 focus:ring-red-200 disabled:cursor-not-allowed disabled:bg-gray-100 disabled:text-gray-400';
 
   return (
     <div>
@@ -227,7 +321,7 @@ export default function PokedexChecklist({
           </div>
         </div>
 
-        <div className="mt-4 grid gap-3 sm:grid-cols-[1fr_auto]">
+        <div className="mt-4 grid gap-3 sm:grid-cols-[1fr_auto_auto]">
           <div>
             <label htmlFor="game-pokedex-search" className="sr-only">
               Buscar en la Pokédex del juego
@@ -246,6 +340,24 @@ export default function PokedexChecklist({
           </div>
           <button
             type="button"
+            onClick={() => setShowAdvanced((value) => !value)}
+            aria-expanded={showAdvanced}
+            className={`inline-flex items-center justify-center gap-2 rounded-lg px-4 py-2.5 text-sm font-bold transition ${
+              showAdvanced || activeFilterCount > 0
+                ? 'bg-indigo-600 text-white hover:bg-indigo-700'
+                : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
+            }`}
+          >
+            <SlidersHorizontal className="h-4 w-4" />
+            Filtros
+            {activeFilterCount > 0 && (
+              <span className="rounded-full bg-white/20 px-1.5 py-0.5 text-[10px] font-black">
+                {activeFilterCount}
+              </span>
+            )}
+          </button>
+          <button
+            type="button"
             onClick={() => setShiny((value) => !value)}
             aria-pressed={shiny}
             className={`inline-flex items-center justify-center gap-2 rounded-lg px-4 py-2.5 text-sm font-bold transition ${
@@ -258,6 +370,232 @@ export default function PokedexChecklist({
             {shiny ? 'Shinies' : 'Ver shinies'}
           </button>
         </div>
+
+        {showAdvanced && (
+          <div className="mt-3 rounded-xl border border-indigo-100 bg-indigo-50/50 p-3">
+            <div className="flex flex-wrap items-center justify-between gap-2">
+              <p className="text-xs font-black uppercase tracking-wide text-indigo-700">
+                Filtros avanzados
+              </p>
+              {activeFilterCount > 0 && (
+                <button
+                  type="button"
+                  onClick={resetAdvancedFilters}
+                  className="inline-flex items-center gap-1 text-xs font-bold text-red-600 transition hover:text-red-700"
+                >
+                  <X className="h-3.5 w-3.5" /> Limpiar filtros
+                </button>
+              )}
+            </div>
+
+            <div className="mt-3 grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
+              <div>
+                <label
+                  htmlFor="game-filter-type"
+                  className="mb-1 block text-[11px] font-bold text-gray-600"
+                >
+                  Tipo
+                </label>
+                <select
+                  id="game-filter-type"
+                  value={type}
+                  onChange={(event) => {
+                    setType(event.target.value);
+                    setPage(1);
+                  }}
+                  className={selectClass}
+                >
+                  <option value="">Todos los tipos</option>
+                  {Object.entries(TYPE_LABELS).map(([value, label]) => (
+                    <option key={value} value={value}>
+                      {label}
+                    </option>
+                  ))}
+                </select>
+              </div>
+
+              <div>
+                <label
+                  htmlFor="game-filter-strong"
+                  className="mb-1 block text-[11px] font-bold text-gray-600"
+                >
+                  Fuerte contra
+                </label>
+                <select
+                  id="game-filter-strong"
+                  value={strongAgainst}
+                  onChange={(event) => {
+                    setStrongAgainst(event.target.value);
+                    setPage(1);
+                  }}
+                  className={selectClass}
+                >
+                  <option value="">Cualquier tipo</option>
+                  {Object.entries(TYPE_LABELS).map(([value, label]) => (
+                    <option key={value} value={value}>
+                      {label}
+                    </option>
+                  ))}
+                </select>
+              </div>
+
+              <div>
+                <label
+                  htmlFor="game-filter-weak"
+                  className="mb-1 block text-[11px] font-bold text-gray-600"
+                >
+                  Débil contra
+                </label>
+                <select
+                  id="game-filter-weak"
+                  value={weakTo}
+                  onChange={(event) => {
+                    setWeakTo(event.target.value);
+                    setPage(1);
+                  }}
+                  className={selectClass}
+                >
+                  <option value="">Cualquier tipo</option>
+                  {Object.entries(TYPE_LABELS).map(([value, label]) => (
+                    <option key={value} value={value}>
+                      {label}
+                    </option>
+                  ))}
+                </select>
+              </div>
+
+              <div>
+                <label
+                  htmlFor="game-filter-resists"
+                  className="mb-1 block text-[11px] font-bold text-gray-600"
+                >
+                  Resiste a
+                </label>
+                <select
+                  id="game-filter-resists"
+                  value={resists}
+                  onChange={(event) => {
+                    setResists(event.target.value);
+                    setPage(1);
+                  }}
+                  className={selectClass}
+                >
+                  <option value="">Cualquier tipo</option>
+                  {Object.entries(TYPE_LABELS).map(([value, label]) => (
+                    <option key={value} value={value}>
+                      {label}
+                    </option>
+                  ))}
+                </select>
+              </div>
+
+              <div>
+                <label
+                  htmlFor="game-filter-species"
+                  className="mb-1 block text-[11px] font-bold text-gray-600"
+                >
+                  Especie
+                </label>
+                <select
+                  id="game-filter-species"
+                  value={species}
+                  onChange={(event) => {
+                    setSpecies(event.target.value as SpeciesCategory);
+                    setPage(1);
+                  }}
+                  className={selectClass}
+                >
+                  {SPECIES_CATEGORY_OPTIONS.map((option) => (
+                    <option key={option.value} value={option.value}>
+                      {option.label}
+                    </option>
+                  ))}
+                </select>
+              </div>
+
+              <div>
+                <label
+                  htmlFor="game-filter-stat"
+                  className="mb-1 block text-[11px] font-bold text-gray-600"
+                >
+                  Estadística
+                </label>
+                <select
+                  id="game-filter-stat"
+                  value={stat}
+                  onChange={(event) => {
+                    setStat(event.target.value);
+                    setPage(1);
+                  }}
+                  className={selectClass}
+                >
+                  <option value="">Sin filtro</option>
+                  {STAT_OPTIONS.map((value) => (
+                    <option key={value} value={value}>
+                      {getStatLabel(value)}
+                    </option>
+                  ))}
+                </select>
+              </div>
+
+              <div>
+                <label
+                  htmlFor="game-filter-min-stat"
+                  className="mb-1 block text-[11px] font-bold text-gray-600"
+                >
+                  Mínimo de la estadística
+                </label>
+                <select
+                  id="game-filter-min-stat"
+                  value={minStat}
+                  onChange={(event) => {
+                    setMinStat(event.target.value);
+                    setPage(1);
+                  }}
+                  disabled={stat === ''}
+                  className={selectClass}
+                >
+                  {MIN_STAT_OPTIONS.map((value) => (
+                    <option key={value} value={value}>
+                      {value} o más
+                    </option>
+                  ))}
+                </select>
+              </div>
+
+              <div>
+                <label
+                  htmlFor="game-filter-total"
+                  className="mb-1 block text-[11px] font-bold text-gray-600"
+                >
+                  Total de estadísticas
+                </label>
+                <select
+                  id="game-filter-total"
+                  value={minTotal}
+                  onChange={(event) => {
+                    setMinTotal(event.target.value);
+                    setPage(1);
+                  }}
+                  className={selectClass}
+                >
+                  <option value="0">Sin mínimo</option>
+                  {MIN_TOTAL_OPTIONS.map((value) => (
+                    <option key={value} value={value}>
+                      {value} o más
+                    </option>
+                  ))}
+                </select>
+              </div>
+            </div>
+
+            <p className="mt-2 text-[11px] text-gray-500">
+              Fuerte contra = sus tipos hacen daño extra. Débil contra = recibe
+              daño extra. Resiste a = recibe menos daño.
+              {filtersLoading ? ' Cargando datos de tipos y stats...' : ''}
+            </p>
+          </div>
+        )}
 
         <div className="mt-3 flex flex-wrap gap-1.5">
           {filters.map((filter) => (
@@ -523,11 +861,60 @@ export default function PokedexChecklist({
             {!lookupLoading && !lookupError && encounters && (
               <div className="mt-4 space-y-3">
                 {encounters.length === 0 ? (
-                  <p className="rounded-xl bg-gray-50 p-4 text-sm text-gray-600">
-                    PokeAPI no registra encuentros salvajes para este juego.
-                    Puede obtenerse por evolución, intercambio, regalo, evento
-                    o crianza.
-                  </p>
+                  alternative && alternative.versions.length > 0 ? (
+                    <>
+                      <p className="rounded-xl border border-indigo-100 bg-indigo-50 p-3 text-xs text-indigo-900">
+                        <strong>Datos alternativos en español.</strong> PokeAPI
+                        no tiene encuentros para este juego; la información
+                        procede de WikiDex.
+                      </p>
+
+                      {alternative.versions.map((group) => (
+                        <div
+                          key={group.version}
+                          className="rounded-xl border border-gray-200 bg-gray-50 p-3"
+                        >
+                          <p className="flex items-center gap-2 text-sm font-black text-gray-800">
+                            <MapPin className="h-4 w-4 text-red-500" />
+                            {VERSION_NAMES_ES[group.version] ??
+                              formatPokemonName(group.version)}
+                          </p>
+                          <ul className="mt-2 space-y-1.5">
+                            {group.entries.map((entry, index) => (
+                              <li
+                                key={`${group.version}-${entry.method}-${index}`}
+                                className="rounded-lg bg-white px-2.5 py-2"
+                              >
+                                <p className="text-[10px] font-black uppercase tracking-wide text-indigo-600">
+                                  {entry.method}
+                                </p>
+                                <p className="mt-0.5 text-xs text-gray-700">
+                                  {entry.details ||
+                                    'Disponible en este juego.'}
+                                </p>
+                              </li>
+                            ))}
+                          </ul>
+                        </div>
+                      ))}
+
+                      <a
+                        href={alternative.pageUrl}
+                        target="_blank"
+                        rel="noreferrer"
+                        className="inline-flex items-center gap-1 text-xs font-bold text-indigo-600 hover:text-indigo-700"
+                      >
+                        Ver la ficha completa en WikiDex
+                        <ExternalLink className="h-3.5 w-3.5" />
+                      </a>
+                    </>
+                  ) : (
+                    <p className="rounded-xl bg-gray-50 p-4 text-sm text-gray-600">
+                      PokeAPI no registra encuentros salvajes para este juego.
+                      Puede obtenerse por evolución, intercambio, regalo, evento
+                      o crianza.
+                    </p>
+                  )
                 ) : (
                   encounters.map((group) => (
                     <div
@@ -542,11 +929,11 @@ export default function PokedexChecklist({
                       <ul className="mt-2 space-y-1.5">
                         {group.locations.map((location) => (
                           <li
-                            key={`${group.version}-${location.location}`}
+                            key={`${group.version}-${location.locationId}`}
                             className="rounded-lg bg-white px-2.5 py-2"
                           >
                             <p className="text-xs font-bold text-gray-900">
-                              {formatPokemonName(location.location)}
+                              {location.location}
                             </p>
                             <p className="mt-0.5 text-[10px] text-gray-500">
                               {location.methods.join(', ')} · Nv.{' '}

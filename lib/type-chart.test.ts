@@ -1,6 +1,8 @@
 import { describe, expect, it } from 'vitest';
 import {
+  getBestOffensiveMultiplier,
   getDefensiveMatchups,
+  getDefensiveMultiplier,
   getOffensiveCoverage,
   getTeamWeaknesses,
 } from './type-chart';
@@ -44,5 +46,16 @@ describe('tabla de tipos', () => {
     expect(weaknesses.find((entry) => entry.type === 'water')?.count).toBe(1);
     expect(weaknesses.find((entry) => entry.type === 'electric')?.count).toBe(2);
     expect(weaknesses.find((entry) => entry.type === 'rock')?.count).toBe(1);
+  });
+
+  it('calcula multiplicadores defensivos y ofensivos para filtros', () => {
+    expect(getDefensiveMultiplier(['fire', 'flying'], 'rock')).toBe(4);
+    expect(getDefensiveMultiplier(['fire', 'flying'], 'grass')).toBe(0.25);
+    expect(getDefensiveMultiplier(['normal'], 'ghost')).toBe(0);
+    expect(getDefensiveMultiplier(['water'], 'electric')).toBe(2);
+
+    expect(getBestOffensiveMultiplier(['fire', 'flying'], 'grass')).toBe(2);
+    expect(getBestOffensiveMultiplier(['fire', 'flying'], 'rock')).toBe(0.5);
+    expect(getBestOffensiveMultiplier(['normal'], 'ghost')).toBe(0);
   });
 });

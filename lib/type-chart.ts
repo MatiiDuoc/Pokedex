@@ -191,6 +191,40 @@ export function isPokemonType(value: string): value is PokemonType {
   return (POKEMON_TYPES as readonly string[]).includes(value);
 }
 
+/**
+ * Multiplicador de daño que recibe un Pokémon con esos tipos cuando le ataca
+ * un tipo concreto. Un valor mayor que 1 significa debilidad.
+ */
+export function getDefensiveMultiplier(
+  defendingTypes: string[],
+  attackingType: PokemonType
+): number {
+  return defendingTypes
+    .map((type) => type.toLowerCase())
+    .filter(isPokemonType)
+    .reduce(
+      (multiplier, defendingType) =>
+        multiplier * (TYPE_CHART[attackingType][defendingType] ?? 1),
+      1
+    );
+}
+
+/**
+ * Mejor multiplicador ofensivo de los tipos del Pokémon contra un tipo
+ * defensor. Un valor mayor que 1 significa que es fuerte contra ese tipo.
+ */
+export function getBestOffensiveMultiplier(
+  attackingTypes: string[],
+  defendingType: PokemonType
+): number {
+  const multipliers = attackingTypes
+    .map((type) => type.toLowerCase())
+    .filter(isPokemonType)
+    .map((attackingType) => TYPE_CHART[attackingType][defendingType] ?? 1);
+
+  return multipliers.length === 0 ? 1 : Math.max(...multipliers);
+}
+
 export interface TypeMultiplier {
   type: PokemonType;
   multiplier: number;

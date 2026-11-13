@@ -20,6 +20,17 @@ import {
 } from 'lucide-react';
 import Pagination from './Pagination';
 import {
+  EMPTY_ADVANCED_FILTERS,
+  countActiveAdvancedFilters,
+  hasActiveAdvancedFilters,
+  matchesAdvancedFilters,
+  type AdvancedPokemonFilters,
+} from '@/lib/advanced-filters';
+import {
+  SPECIES_CATEGORY_OPTIONS,
+  type SpeciesCategory,
+} from '@/lib/pokemon-categories';
+import {
   LEGENDARY_FILTERS,
   TYPE_LABELS,
   formatDexNumber,
@@ -29,6 +40,7 @@ import {
   getStatLabel,
   type LegendaryCategory,
 } from '@/lib/pokemon';
+import { isPokemonType } from '@/lib/type-chart';
 import { usePokemonFilters } from '@/lib/usePokemonFilters';
 import type { PokemonIndexEntry } from '@/types/pokemon';
 
@@ -65,6 +77,16 @@ const STAT_OPTIONS = [
 ] as const;
 
 const MIN_STAT_OPTIONS = [50, 75, 100, 120, 150, 180];
+const MIN_TOTAL_OPTIONS = [300, 400, 500, 600, 680];
+const EXPLORER_SPECIES_OPTIONS = SPECIES_CATEGORY_OPTIONS.filter(
+  (option) =>
+    option.value !== 'legendary' &&
+    option.value !== 'mythical' &&
+    option.value !== 'ultra-beast'
+);
+
+const FIELD_CLASS =
+  'w-full rounded-lg border border-gray-300 bg-white px-3 py-2.5 text-sm text-gray-900 focus:border-red-500 focus:outline-none focus:ring-2 focus:ring-red-200 disabled:cursor-not-allowed disabled:bg-gray-100 disabled:text-gray-400';
 
 interface PokedexExplorerProps {
   pokemon: PokemonIndexEntry[];
@@ -81,6 +103,11 @@ export default function PokedexExplorer({ pokemon }: PokedexExplorerProps) {
   const [ability, setAbility] = useState('');
   const [stat, setStat] = useState('');
   const [minStat, setMinStat] = useState('100');
+  const [weakTo, setWeakTo] = useState('');
+  const [resists, setResists] = useState('');
+  const [strongAgainst, setStrongAgainst] = useState('');
+  const [species, setSpecies] = useState<SpeciesCategory>('all');
+  const [minTotal, setMinTotal] = useState('0');
   const [showAdvanced, setShowAdvanced] = useState(false);
   const [shiny, setShiny] = useState(false);
   const [page, setPage] = useState(1);
@@ -143,6 +170,11 @@ export default function PokedexExplorer({ pokemon }: PokedexExplorerProps) {
     const nextAbility = params.get('ability') ?? '';
     const nextStat = params.get('stat') ?? '';
     const nextMinStat = params.get('min') ?? '100';
+    const nextWeak = params.get('weak') ?? '';
+    const nextResist = params.get('resist') ?? '';
+    const nextStrong = params.get('strong') ?? '';
+    const nextSpecies = params.get('species') ?? 'all';
+    const nextTotal = params.get('total') ?? '0';
     const nextPage = Number.parseInt(params.get('page') ?? '1', 10);
     const nextShiny = params.get('shiny') === '1';
     const nextAdvanced = params.get('adv') === '1';
@@ -173,17 +205,56 @@ export default function PokedexExplorer({ pokemon }: PokedexExplorerProps) {
           ? nextMinStat
           : '100'
       );
+      setWeakTo(isPokemonType(nextWeak) ? nextWeak : '');
+      setResists(isPokemonType(nextResist) ? nextResist : '');
+      setStrongAgainst(isPokemonType(nextStrong) ? nextStrong : '');
+      setSpecies(
+        EXPLORER_SPECIES_OPTIONS.some(
+          (option) => option.value === nextSpecies
+        )
+          ? (nextSpecies as SpeciesCategory)
+          : 'all'
+      );
+      setMinTotal(
+        MIN_TOTAL_OPTIONS.includes(Number(nextTotal)) || nextTotal === '0'
+          ? nextTotal
+          : '0'
+      );
       setPage(Number.isInteger(nextPage) && nextPage > 0 ? nextPage : 1);
       setShiny(nextShiny);
       setShowAdvanced(
-        nextAdvanced || Boolean(nextAbility) || Boolean(nextStat)
+        nextAdvanced ||
+          Boolean(nextAbility) ||
+          Boolean(nextStat) ||
+          Boolean(nextWeak) ||
+          Boolean(nextResist) ||
+          Boolean(nextStrong) ||
+          (nextSpecies !== '' && nextSpecies !== 'all') ||
+          (nextTotal !== '' && nextTotal !== '0')
       );
       setFiltersReady(true);
     }, 0);
   }, []);
 
   const deferredQuery = useDeferredValue(normalizedQuery);
-  const filtersEnabled = type !== '' || ability !== '' || stat !== '';
+  const advancedFilters = useMemo<AdvancedPokemonFilters>(
+    () => ({
+      type,
+      weakTo,
+      resists,
+      strongAgainst,
+      species,
+      stat,
+      minStat: Number(minStat),
+      minTotal: Number(minTotal),
+    }),
+    [type, weakTo, resists, strongAgainst, species, stat, minStat, minTotal]
+  );
+  const advancedFiltersEnabled = hasActiveAdvancedFilters(advancedFilters);
+  const activeFilterCount =
+    countActiveAdvancedFilters(advancedFilters) + (ability !== '' ? 1 : 0);
+  const filtersEnabled =
+    advancedFiltersEnabled || ability !== '';
   const { data: filterData, loading: filtersLoading } =
     usePokemonFilters(filtersEnabled);
 
@@ -203,42 +274,36 @@ export default function PokedexExplorer({ pokemon }: PokedexExplorerProps) {
       const matchesGeneration =
         generation === '' || getGenerationFromId(entry.id) === Number(generation);
       const entryFilters = filterMap.get(entry.id);
-      const matchesType =
-        !dataReady ||
-        type === '' ||
-        (entryFilters?.types.includes(type) ?? false);
       const matchesAbility =
         !dataReady ||
         ability === '' ||
         (entryFilters?.abilities.includes(ability) ?? false);
-      const statValue =
-        stat === '' ? 0 : entryFilters?.stats[stat as keyof typeof entryFilters.stats] ?? 0;
-      const matchesStat =
-        !dataReady || stat === '' || statValue >= Number(minStat);
       const matchesLegendary =
         legendary === '' || entry.legendaryCategory === legendary;
 
       return (
         matchesQuery &&
         matchesGeneration &&
-        matchesType &&
         matchesAbility &&
-        matchesStat &&
-        matchesLegendary
+        matchesLegendary &&
+        matchesAdvancedFilters(
+          entry,
+          entryFilters,
+          advancedFilters,
+          dataReady
+        )
       );
     });
   }, [
     pokemon,
     deferredQuery,
     generation,
-    type,
     ability,
-    stat,
-    minStat,
     filterData,
     filterMap,
     filtersEnabled,
     legendary,
+    advancedFilters,
   ]);
 
   const totalPages = Math.max(1, Math.ceil(filtered.length / ITEMS_PER_PAGE));
@@ -256,6 +321,11 @@ export default function PokedexExplorer({ pokemon }: PokedexExplorerProps) {
     if (ability) params.set('ability', ability);
     if (stat) params.set('stat', stat);
     if (stat && minStat !== '100') params.set('min', minStat);
+    if (weakTo) params.set('weak', weakTo);
+    if (resists) params.set('resist', resists);
+    if (strongAgainst) params.set('strong', strongAgainst);
+    if (species !== 'all') params.set('species', species);
+    if (minTotal !== '0') params.set('total', minTotal);
     if (showAdvanced) params.set('adv', '1');
     if (shiny) params.set('shiny', '1');
     if (safePage > 1) params.set('page', String(safePage));
@@ -276,6 +346,11 @@ export default function PokedexExplorer({ pokemon }: PokedexExplorerProps) {
     ability,
     stat,
     minStat,
+    weakTo,
+    resists,
+    strongAgainst,
+    species,
+    minTotal,
     showAdvanced,
     shiny,
     safePage,
@@ -287,6 +362,20 @@ export default function PokedexExplorer({ pokemon }: PokedexExplorerProps) {
   );
 
   const resetPage = () => setPage(1);
+
+  const resetAdvancedFilters = () => {
+    const empty = EMPTY_ADVANCED_FILTERS;
+    setType(empty.type);
+    setAbility('');
+    setStat(empty.stat);
+    setMinStat(empty.minStat.toString());
+    setWeakTo(empty.weakTo);
+    setResists(empty.resists);
+    setStrongAgainst(empty.strongAgainst);
+    setSpecies(empty.species);
+    setMinTotal(empty.minTotal.toString());
+    resetPage();
+  };
 
   const handleSearchKeyDown = (event: KeyboardEvent<HTMLInputElement>) => {
     if (!searchOpen || suggestions.length === 0) {
@@ -601,82 +690,213 @@ export default function PokedexExplorer({ pokemon }: PokedexExplorerProps) {
         </div>
 
         {showAdvanced && (
-          <div className="mb-6 grid gap-4 rounded-2xl border border-gray-200 bg-white p-4 shadow-sm md:grid-cols-3">
-            <div>
-              <label
-                htmlFor="advanced-ability"
-                className="mb-1 block text-xs font-bold text-gray-600"
-              >
-                Habilidad
-              </label>
-              <select
-                id="advanced-ability"
-                value={ability}
-                onChange={(event) => {
-                  setAbility(event.target.value);
-                  resetPage();
-                }}
-                className="w-full rounded-lg border border-gray-300 bg-white px-3 py-2.5 text-sm text-gray-900 focus:border-red-500 focus:outline-none focus:ring-2 focus:ring-red-200"
-              >
-                <option value="">Cualquier habilidad</option>
-                {ADVANCED_ABILITIES.map((value) => (
-                  <option key={value} value={value}>
-                    {formatPokemonName(value)}
-                  </option>
-                ))}
-              </select>
+          <div className="mb-6 rounded-2xl border border-gray-200 bg-white p-4 shadow-sm">
+            <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
+              <div>
+                <label
+                  htmlFor="advanced-strong"
+                  className="mb-1 block text-xs font-bold text-gray-600"
+                >
+                  Fuerte contra
+                </label>
+                <select
+                  id="advanced-strong"
+                  value={strongAgainst}
+                  onChange={(event) => {
+                    setStrongAgainst(event.target.value);
+                    resetPage();
+                  }}
+                  className={FIELD_CLASS}
+                >
+                  <option value="">Cualquier tipo</option>
+                  {Object.entries(TYPE_LABELS).map(([value, label]) => (
+                    <option key={value} value={value}>
+                      {label}
+                    </option>
+                  ))}
+                </select>
+              </div>
+
+              <div>
+                <label
+                  htmlFor="advanced-weak"
+                  className="mb-1 block text-xs font-bold text-gray-600"
+                >
+                  Débil contra
+                </label>
+                <select
+                  id="advanced-weak"
+                  value={weakTo}
+                  onChange={(event) => {
+                    setWeakTo(event.target.value);
+                    resetPage();
+                  }}
+                  className={FIELD_CLASS}
+                >
+                  <option value="">Cualquier tipo</option>
+                  {Object.entries(TYPE_LABELS).map(([value, label]) => (
+                    <option key={value} value={value}>
+                      {label}
+                    </option>
+                  ))}
+                </select>
+              </div>
+
+              <div>
+                <label
+                  htmlFor="advanced-resists"
+                  className="mb-1 block text-xs font-bold text-gray-600"
+                >
+                  Resiste a
+                </label>
+                <select
+                  id="advanced-resists"
+                  value={resists}
+                  onChange={(event) => {
+                    setResists(event.target.value);
+                    resetPage();
+                  }}
+                  className={FIELD_CLASS}
+                >
+                  <option value="">Cualquier tipo</option>
+                  {Object.entries(TYPE_LABELS).map(([value, label]) => (
+                    <option key={value} value={value}>
+                      {label}
+                    </option>
+                  ))}
+                </select>
+              </div>
+
+              <div>
+                <label
+                  htmlFor="advanced-species"
+                  className="mb-1 block text-xs font-bold text-gray-600"
+                >
+                  Especie
+                </label>
+                <select
+                  id="advanced-species"
+                  value={species}
+                  onChange={(event) => {
+                    setSpecies(event.target.value as SpeciesCategory);
+                    resetPage();
+                  }}
+                  className={FIELD_CLASS}
+                >
+                  {EXPLORER_SPECIES_OPTIONS.map((option) => (
+                    <option key={option.value} value={option.value}>
+                      {option.label}
+                    </option>
+                  ))}
+                </select>
+              </div>
+
+              <div>
+                <label
+                  htmlFor="advanced-ability"
+                  className="mb-1 block text-xs font-bold text-gray-600"
+                >
+                  Habilidad
+                </label>
+                <select
+                  id="advanced-ability"
+                  value={ability}
+                  onChange={(event) => {
+                    setAbility(event.target.value);
+                    resetPage();
+                  }}
+                  className={FIELD_CLASS}
+                >
+                  <option value="">Cualquier habilidad</option>
+                  {ADVANCED_ABILITIES.map((value) => (
+                    <option key={value} value={value}>
+                      {formatPokemonName(value)}
+                    </option>
+                  ))}
+                </select>
+              </div>
+
+              <div>
+                <label
+                  htmlFor="advanced-stat"
+                  className="mb-1 block text-xs font-bold text-gray-600"
+                >
+                  Estadística
+                </label>
+                <select
+                  id="advanced-stat"
+                  value={stat}
+                  onChange={(event) => {
+                    setStat(event.target.value);
+                    resetPage();
+                  }}
+                  className={FIELD_CLASS}
+                >
+                  <option value="">Sin filtro de estadística</option>
+                  {STAT_OPTIONS.map((value) => (
+                    <option key={value} value={value}>
+                      {getStatLabel(value)}
+                    </option>
+                  ))}
+                </select>
+              </div>
+
+              <div>
+                <label
+                  htmlFor="advanced-min-stat"
+                  className="mb-1 block text-xs font-bold text-gray-600"
+                >
+                  Mínimo de la estadística
+                </label>
+                <select
+                  id="advanced-min-stat"
+                  value={minStat}
+                  onChange={(event) => {
+                    setMinStat(event.target.value);
+                    resetPage();
+                  }}
+                  disabled={stat === ''}
+                  className={FIELD_CLASS}
+                >
+                  {MIN_STAT_OPTIONS.map((value) => (
+                    <option key={value} value={value}>
+                      {value} o más
+                    </option>
+                  ))}
+                </select>
+              </div>
+
+              <div>
+                <label
+                  htmlFor="advanced-total"
+                  className="mb-1 block text-xs font-bold text-gray-600"
+                >
+                  Total de estadísticas
+                </label>
+                <select
+                  id="advanced-total"
+                  value={minTotal}
+                  onChange={(event) => {
+                    setMinTotal(event.target.value);
+                    resetPage();
+                  }}
+                  className={FIELD_CLASS}
+                >
+                  <option value="0">Sin mínimo</option>
+                  {MIN_TOTAL_OPTIONS.map((value) => (
+                    <option key={value} value={value}>
+                      {value} o más
+                    </option>
+                  ))}
+                </select>
+              </div>
             </div>
-            <div>
-              <label
-                htmlFor="advanced-stat"
-                className="mb-1 block text-xs font-bold text-gray-600"
-              >
-                Estadística mínima
-              </label>
-              <select
-                id="advanced-stat"
-                value={stat}
-                onChange={(event) => {
-                  setStat(event.target.value);
-                  resetPage();
-                }}
-                className="w-full rounded-lg border border-gray-300 bg-white px-3 py-2.5 text-sm text-gray-900 focus:border-red-500 focus:outline-none focus:ring-2 focus:ring-red-200"
-              >
-                <option value="">Sin filtro de estadística</option>
-                {STAT_OPTIONS.map((value) => (
-                  <option key={value} value={value}>
-                    {getStatLabel(value)}
-                  </option>
-                ))}
-              </select>
-            </div>
-            <div>
-              <label
-                htmlFor="advanced-min-stat"
-                className="mb-1 block text-xs font-bold text-gray-600"
-              >
-                Valor mínimo
-              </label>
-              <select
-                id="advanced-min-stat"
-                value={minStat}
-                onChange={(event) => {
-                  setMinStat(event.target.value);
-                  resetPage();
-                }}
-                disabled={stat === ''}
-                className="w-full rounded-lg border border-gray-300 bg-white px-3 py-2.5 text-sm text-gray-900 focus:border-red-500 focus:outline-none focus:ring-2 focus:ring-red-200 disabled:cursor-not-allowed disabled:bg-gray-100 disabled:text-gray-400"
-              >
-                {MIN_STAT_OPTIONS.map((value) => (
-                  <option key={value} value={value}>
-                    {value} o más
-                  </option>
-                ))}
-              </select>
-            </div>
-            <p className="text-xs text-gray-400 md:col-span-3">
-              Los datos de tipos, estadísticas y habilidades se cargan una sola
-              vez desde el índice local de PokeAPI.
+
+            <p className="mt-3 text-xs text-gray-400">
+              Fuerte contra = sus tipos hacen daño extra. Débil contra = recibe
+              daño extra. Resiste a = recibe menos daño. Los datos de tipos,
+              estadísticas y habilidades se cargan una sola vez desde el índice
+              local de PokeAPI.
             </p>
           </div>
         )}
@@ -690,21 +910,16 @@ export default function PokedexExplorer({ pokemon }: PokedexExplorerProps) {
             >
               <SlidersHorizontal className="h-4 w-4" />
               Filtros avanzados
-              {(ability || stat) && (
+              {activeFilterCount > 0 && (
                 <span className="rounded-full bg-indigo-100 px-2 py-0.5 text-[10px] font-black text-indigo-700">
-                  {[ability, stat].filter(Boolean).length}
+                  {activeFilterCount}
                 </span>
               )}
             </button>
-            {(type || ability || stat) && (
+            {(hasActiveAdvancedFilters(advancedFilters) || ability !== '') && (
               <button
                 type="button"
-                onClick={() => {
-                  setType('');
-                  setAbility('');
-                  setStat('');
-                  resetPage();
-                }}
+                onClick={resetAdvancedFilters}
                 className="inline-flex items-center gap-1 rounded-lg px-3 py-2 text-sm font-bold text-red-600 transition hover:bg-red-50"
               >
                 <X className="h-3.5 w-3.5" /> Limpiar avanzados

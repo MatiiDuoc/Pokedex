@@ -3,6 +3,7 @@ import {
   getPokemonEncounters,
   getVersionGroupVersions,
 } from '@/services/pokemonEncounters';
+import { getWikidexFallback } from '@/services/wikidexEncounters';
 
 export const runtime = 'nodejs';
 export const revalidate = 604800;
@@ -37,12 +38,19 @@ export async function GET(request: Request, { params }: EncountersRouteProps) {
     const encounters = await getPokemonEncounters(id);
 
     if (!versionGroup) {
+      const alternative =
+        encounters.length === 0
+          ? await getWikidexFallback(id)
+          : null;
+      const cacheable = encounters.length > 0 || alternative !== null;
+
       return NextResponse.json(
-        { encounters },
+        { encounters, alternative },
         {
           headers: {
-            'Cache-Control':
-              'public, s-maxage=604800, stale-while-revalidate=2592000',
+            'Cache-Control': cacheable
+              ? 'public, s-maxage=604800, stale-while-revalidate=2592000'
+              : 'public, s-maxage=3600, stale-while-revalidate=86400',
           },
         }
       );
@@ -53,13 +61,19 @@ export async function GET(request: Request, { params }: EncountersRouteProps) {
     const filtered = encounters.filter((group) =>
       allowed.has(group.version)
     );
+    const alternative =
+      filtered.length === 0
+        ? await getWikidexFallback(id, versionGroup)
+        : null;
+    const cacheable = filtered.length > 0 || alternative !== null;
 
     return NextResponse.json(
-      { encounters: filtered },
+      { encounters: filtered, alternative },
       {
         headers: {
-          'Cache-Control':
-            'public, s-maxage=604800, stale-while-revalidate=2592000',
+          'Cache-Control': cacheable
+            ? 'public, s-maxage=604800, stale-while-revalidate=2592000'
+            : 'public, s-maxage=3600, stale-while-revalidate=86400',
         },
       }
     );

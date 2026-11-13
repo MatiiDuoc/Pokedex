@@ -16,6 +16,7 @@ import {
 } from '@/lib/pokemon';
 import { getPokemonDetail } from '@/services/pokemonDetail';
 import { getPokemonEncounters } from '@/services/pokemonEncounters';
+import { getWikidexFallback } from '@/services/wikidexEncounters';
 
 export const revalidate = 604800;
 
@@ -80,6 +81,9 @@ export default async function PokemonDetailPage({
     getPokemonEncounters(id),
   ]);
   if (!detail) redirect('/pokedex');
+
+  const alternative =
+    encounters.length === 0 ? await getWikidexFallback(id) : null;
 
   const rawGame = Array.isArray(query.game) ? query.game[0] : query.game;
   const game = rawGame ? gamesBySlug.get(rawGame) : undefined;
@@ -200,7 +204,7 @@ export default async function PokemonDetailPage({
               <p className="mt-1 text-sm text-gray-600">
                 Zonas y métodos de encuentro por versión.
               </p>
-              <EncounterList encounters={encounters} />
+              <EncounterList encounters={encounters} alternative={alternative} />
               <p className="mt-3 rounded-xl border border-amber-200 bg-amber-50 p-3 text-xs text-amber-900">
                 <strong>¿Buscas el shiny?</strong> Puedes usar estas mismas
                 zonas; la probabilidad depende del juego y algunos encuentros
