@@ -16,7 +16,7 @@ function normalize(value: string): string {
 export async function GET(request: NextRequest) {
   const query = normalize(request.nextUrl.searchParams.get('q') ?? '');
 
-  if (query.length < 2 || query.length > 60) {
+  if (query.length < 1 || query.length > 60) {
     return NextResponse.json(
       { pokemon: [], games: [] },
       {

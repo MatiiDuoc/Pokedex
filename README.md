@@ -108,9 +108,19 @@ checklists por juego, guías paso a paso y visor 3D.
   imagen oficial si el modelo no está disponible.
 - **Búsqueda global** de Pokémon y guías, con filtros por tipo, generación y
   categoría.
+- **Autocompletado global** en la cabecera, el inicio y `/buscar`: sugerencias
+  desde el primer carácter, resultado destacado con artwork, navegación por
+  teclado y acceso directo a la ficha y sus zonas de encuentro.
 - **Buscador de la Pokédex con autocompletado**: al escribir aparecen
   sugerencias con imagen, nombre, número y generación; la primera coincide con
   una vista previa destacada. Se puede navegar con teclado.
+- **Pokédex por partida con vistos y capturados**: cada guía separa ambas
+  listas, permite marcar Pokémon vistos, capturados o ambos, y muestra el
+  progreso de cada categoría. Un Pokémon capturado cuenta automáticamente como
+  visto.
+- **Dónde encontrarlo por juego**: desde cada tarjeta de la Pokédex regional se
+  consultan las zonas de PokeAPI filtradas por la versión del juego, con
+  métodos, niveles y probabilidad, además de una nota para la búsqueda shiny.
 - **Filtros de la Pokédex en la URL** (`?q=`, `?type=`, `?gen=`, `?shiny=`…),
   compartibles y persistentes al recargar.
 - **PWA offline**: las páginas visitadas se guardan en caché y hay una página
@@ -192,6 +202,8 @@ Tablas creadas: `users`, `sessions`, `progress` y `rate_limits`.
 - `GET /api/pokemon/[id]` — datos básicos de un Pokémon para añadirlo al equipo.
 - `GET /api/pokemon/[id]/moves?versionGroup=...` — movimientos aprendibles en
   un juego concreto.
+- `GET /api/pokemon/[id]/encounters?versionGroup=...` — zonas de encuentro
+  filtradas por las versiones de un juego.
 - `/pokedex/[id]` — ficha completa de cada Pokémon (ISR de 7 días).
 - `/equipo` — Team Builder privado global con análisis de tipos.
 - `GET /api/account` — devuelve todas las guías y el equipo del usuario.

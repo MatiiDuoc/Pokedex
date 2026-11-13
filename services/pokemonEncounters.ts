@@ -34,6 +34,11 @@ export interface VersionEncounters {
 }
 
 const cache = new Map<number, Promise<VersionEncounters[]>>();
+const versionGroupCache = new Map<string, Promise<string[]>>();
+
+interface VersionGroupResponse {
+  versions: NamedResource[];
+}
 
 async function fetchEncounters(id: number): Promise<EncounterResponse[]> {
   const response = await fetch(`${POKEAPI_BASE}/pokemon/${id}/encounters`, {
@@ -131,5 +136,35 @@ export async function getPokemonEncounters(
 
   cache.set(id, promise);
   promise.catch(() => cache.delete(id));
+  return promise;
+}
+
+export async function getVersionGroupVersions(
+  versionGroup: string
+): Promise<string[]> {
+  const cached = versionGroupCache.get(versionGroup);
+  if (cached) return cached;
+
+  const promise = (async () => {
+    try {
+      const response = await fetch(
+        `${POKEAPI_BASE}/version-group/${versionGroup}`,
+        {
+          next: { revalidate: REVALIDATE_SECONDS },
+          signal: AbortSignal.timeout(TIMEOUT_MS),
+        }
+      );
+
+      if (!response.ok) return [];
+
+      const data = (await response.json()) as VersionGroupResponse;
+      return data.versions.map((version) => version.name);
+    } catch {
+      return [];
+    }
+  })();
+
+  versionGroupCache.set(versionGroup, promise);
+  promise.catch(() => versionGroupCache.delete(versionGroup));
   return promise;
 }

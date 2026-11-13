@@ -56,8 +56,10 @@ export default function HomeSearch() {
   const [activeIndex, setActiveIndex] = useState(-1);
 
   const normalizedQuery = query.trim();
-  const hasQuery = normalizedQuery.length >= 2;
+  const hasQuery = normalizedQuery.length >= 1;
   const isOpen = open && hasQuery;
+  const featured = results.pokemon[0];
+  const otherPokemon = results.pokemon.slice(1);
 
   const flatItems: FlatItem[] = [
     ...results.pokemon.map((pokemon) => ({ type: 'pokemon' as const, value: pokemon })),
@@ -87,7 +89,7 @@ export default function HomeSearch() {
       } finally {
         setLoading(false);
       }
-    }, 250);
+    }, 150);
 
     return () => {
       controller.abort();
@@ -187,7 +189,7 @@ export default function HomeSearch() {
             value={query}
             onChange={(event) => {
               setQuery(event.target.value);
-              setOpen(false);
+              setOpen(true);
               setActiveIndex(-1);
             }}
             onFocus={() => {
@@ -239,13 +241,57 @@ export default function HomeSearch() {
             </p>
           )}
 
-          {results.pokemon.length > 0 && (
+          {featured && (
+            <button
+              type="button"
+              id="home-search-item-0"
+              role="option"
+              aria-selected={activeIndex === 0}
+              onMouseEnter={() => setActiveIndex(0)}
+              onClick={() => {
+                setOpen(false);
+                router.push(
+                  `/pokedex/${featured.id}#donde-encontrarlo`
+                );
+              }}
+              className={`flex w-full items-center gap-4 border-b border-gray-100 p-3 text-left transition ${
+                activeIndex === 0 ? 'bg-red-50' : 'hover:bg-gray-50'
+              }`}
+            >
+              {/* eslint-disable-next-line @next/next/no-img-element */}
+              <img
+                src={featured.artworkUrl}
+                alt={formatPokemonName(featured.name)}
+                loading="eager"
+                className="h-20 w-20 flex-none object-contain"
+              />
+              <span className="min-w-0 flex-1">
+                <span className="block text-[9px] font-black uppercase tracking-widest text-red-600">
+                  Mejor coincidencia
+                </span>
+                <span className="block truncate text-lg font-black text-gray-900">
+                  {formatPokemonName(featured.name)}
+                </span>
+                <span className="block text-xs font-semibold text-gray-500">
+                  {formatDexNumber(featured.id)}
+                  {getLegendaryLabel(featured.legendaryCategory)
+                    ? ` · ${getLegendaryLabel(featured.legendaryCategory)}`
+                    : ''}
+                </span>
+                <span className="mt-1 block text-[10px] font-bold text-red-600">
+                  Ver ficha y dónde encontrarlo →
+                </span>
+              </span>
+            </button>
+          )}
+
+          {otherPokemon.length > 0 && (
             <div className="mb-1">
               <p className="px-3 py-1 text-[10px] font-black uppercase tracking-widest text-gray-400">
-                Pokémon
+                Más Pokémon
               </p>
-              {results.pokemon.map((pokemon, index) => {
-                const flatIndex = index;
+              {otherPokemon.map((pokemon, index) => {
+                const flatIndex = index + 1;
                 const label = getLegendaryLabel(pokemon.legendaryCategory);
                 return (
                   <button

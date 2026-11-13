@@ -6,7 +6,11 @@ import type { GameProgress } from '@/types/progress';
 
 export type { GameProgress } from '@/types/progress';
 
-const EMPTY_PROGRESS: GameProgress = { caught: [], checklist: [] };
+const EMPTY_PROGRESS: GameProgress = {
+  caught: [],
+  seen: [],
+  checklist: [],
+};
 
 /**
  * Progreso de una guía. Cuando hay sesión iniciada se sincroniza con Postgres;
@@ -28,10 +32,16 @@ export function useGameProgress(slug: string) {
   const toggleCaught = useCallback(
     (id: number) => {
       if (!user) return;
-      const caught = progress.caught.includes(id)
+
+      const isCaught = progress.caught.includes(id);
+      const caught = isCaught
         ? progress.caught.filter((entry) => entry !== id)
         : [...progress.caught, id];
-      update({ ...progress, caught });
+      const seen = new Set(progress.seen ?? []);
+
+      if (!isCaught) seen.add(id);
+
+      update({ ...progress, caught, seen: Array.from(seen) });
     },
     [progress, update, user]
   );
@@ -39,12 +49,70 @@ export function useGameProgress(slug: string) {
   const setCaught = useCallback(
     (ids: number[], value: boolean) => {
       if (!user) return;
-      const next = new Set(progress.caught);
+
+      const caught = new Set(progress.caught);
+      const seen = new Set(progress.seen ?? []);
+
       for (const id of ids) {
-        if (value) next.add(id);
-        else next.delete(id);
+        if (value) {
+          caught.add(id);
+          seen.add(id);
+        } else {
+          caught.delete(id);
+        }
       }
-      update({ ...progress, caught: Array.from(next) });
+
+      update({
+        ...progress,
+        caught: Array.from(caught),
+        seen: Array.from(seen),
+      });
+    },
+    [progress, update, user]
+  );
+
+  const toggleSeen = useCallback(
+    (id: number) => {
+      if (!user) return;
+
+      const currentSeen = progress.seen ?? [];
+      const isSeen = currentSeen.includes(id);
+
+      if (isSeen) {
+        update({
+          ...progress,
+          seen: currentSeen.filter((entry) => entry !== id),
+          caught: progress.caught.filter((entry) => entry !== id),
+        });
+      } else {
+        update({ ...progress, seen: [...currentSeen, id] });
+      }
+    },
+    [progress, update, user]
+  );
+
+  const setSeen = useCallback(
+    (ids: number[], value: boolean) => {
+      if (!user) return;
+
+      const seen = new Set(progress.seen ?? []);
+      const removed = new Set<number>();
+
+      for (const id of ids) {
+        if (value) seen.add(id);
+        else {
+          seen.delete(id);
+          removed.add(id);
+        }
+      }
+
+      update({
+        ...progress,
+        seen: Array.from(seen),
+        caught: value
+          ? progress.caught
+          : progress.caught.filter((id) => !removed.has(id)),
+      });
     },
     [progress, update, user]
   );
@@ -100,9 +168,12 @@ export function useGameProgress(slug: string) {
     isAuthenticated: Boolean(user),
     requiresLogin: !user && !authLoading,
     isCaught: (id: number) => progress.caught.includes(id),
+    isSeen: (id: number) => (progress.seen ?? []).includes(id),
     isChecked: (item: string) => progress.checklist.includes(item),
     toggleCaught,
     setCaught,
+    toggleSeen,
+    setSeen,
     toggleChecklist,
     setChecklist,
     setNote,

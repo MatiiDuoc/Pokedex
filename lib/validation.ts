@@ -49,6 +49,16 @@ export function validateProgressData(value: unknown): GameProgress | null {
       item.length <= MAX_CHECKLIST_LENGTH
   );
 
+  const seen = Array.from(
+    new Set([
+      ...(Array.isArray(candidate.seen) ? candidate.seen : []).filter(
+        (id): id is number =>
+          Number.isInteger(id) && id >= 1 && id <= MAX_CAUGHT
+      ),
+      ...caught,
+    ])
+  );
+
   let notes: Record<string, string> | undefined;
 
   if (
@@ -72,7 +82,9 @@ export function validateProgressData(value: unknown): GameProgress | null {
     if (entries.length > 0) notes = Object.fromEntries(entries);
   }
 
-  return notes ? { caught, checklist, notes } : { caught, checklist };
+  return notes
+    ? { caught, seen, checklist, notes }
+    : { caught, seen, checklist };
 }
 
 function isSafePokemon(value: unknown): value is PokemonBasic {

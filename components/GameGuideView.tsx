@@ -75,6 +75,8 @@ export default function GameGuideView({
     requiresLogin,
     toggleCaught,
     setCaught,
+    toggleSeen,
+    setSeen,
     toggleChecklist,
     setChecklist,
     setNote,
@@ -251,6 +253,9 @@ export default function GameGuideView({
     progress.checklist.includes(`step:${index}`)
   ).length;
   const dexDone = pokemon.filter((entry) => progress.caught.includes(entry.id)).length;
+  const seenDone = pokemon.filter((entry) =>
+    (progress.seen ?? []).includes(entry.id)
+  ).length;
   const gymsDone = game.gyms.filter((_, index) =>
     progress.checklist.includes(`challenge:${index}`)
   ).length;
@@ -578,7 +583,11 @@ export default function GameGuideView({
                 : '—'}
             </p>
             <p className="mt-2 text-xs text-gray-500">
-              {hasPokedex ? 'Especies marcadas' : 'Pasos completados'}
+              {hasPokedex
+                ? `${loaded ? seenDone : '—'} vistos · ${
+                    loaded ? dexDone : '—'
+                  } capturados`
+                : 'Pasos completados'}
             </p>
           </div>
         </section>
@@ -1516,10 +1525,15 @@ export default function GameGuideView({
                 <PokedexChecklist
                   pokemon={pokemon}
                   caught={progress.caught}
+                  seen={progress.seen ?? []}
                   loaded={loaded}
+                  versionGroup={versionGroup}
+                  gameTitle={game.shortTitle}
                   readOnly={progressReadOnly}
-                  onToggle={toggleCaught}
-                  onSetMany={setCaught}
+                  onToggleCaught={toggleCaught}
+                  onSetCaughtMany={setCaught}
+                  onToggleSeen={toggleSeen}
+                  onSetSeenMany={setSeen}
                 />
               )}
             </section>

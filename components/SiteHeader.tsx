@@ -3,6 +3,7 @@
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 import { useAccount } from '@/components/AccountProvider';
+import GlobalSearchAutocomplete from '@/components/GlobalSearchAutocomplete';
 import ThemeToggle from '@/components/ThemeToggle';
 
 const links = [
@@ -120,18 +121,9 @@ export default function SiteHeader() {
           </div>
         </div>
 
-        <form action="/buscar" className="mt-2 hidden lg:block">
-          <label htmlFor="global-search" className="sr-only">
-            Buscar Pokémon o guía
-          </label>
-          <input
-            id="global-search"
-            name="q"
-            type="search"
-            placeholder="Buscar Pokémon, juego o región..."
-            className="w-full rounded-lg border border-gray-200 bg-gray-50 px-3 py-2 text-sm text-gray-900 placeholder-gray-500 focus:border-red-500 focus:bg-white focus:outline-none focus:ring-2 focus:ring-red-200"
-          />
-        </form>
+        <div className="mt-2 hidden lg:block">
+          <GlobalSearchAutocomplete />
+        </div>
       </div>
     </header>
   );

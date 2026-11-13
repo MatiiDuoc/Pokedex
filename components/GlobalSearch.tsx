@@ -190,6 +190,44 @@ export default function GlobalSearch({
           </p>
         )}
 
+        {query.trim() && filteredPokemon[0] && (
+          <Link
+            href={`/pokedex/${filteredPokemon[0].id}#donde-encontrarlo`}
+            className="mb-6 flex flex-wrap items-center gap-4 rounded-2xl border border-red-100 bg-white p-4 shadow-md transition hover:border-red-200 hover:shadow-lg"
+          >
+            {/* eslint-disable-next-line @next/next/no-img-element */}
+            <img
+              src={
+                shiny
+                  ? filteredPokemon[0].shinyArtworkUrl
+                  : filteredPokemon[0].artworkUrl
+              }
+              alt={formatPokemonName(filteredPokemon[0].name)}
+              className="h-24 w-24 object-contain"
+            />
+            <div className="min-w-0 flex-1">
+              <p className="text-[10px] font-black uppercase tracking-widest text-red-600">
+                Mejor coincidencia
+              </p>
+              <h2 className="text-2xl font-black text-gray-900">
+                {formatPokemonName(filteredPokemon[0].name)}
+              </h2>
+              <p className="text-sm font-semibold text-gray-500">
+                {formatDexNumber(filteredPokemon[0].id)} · Gen{' '}
+                {getGenerationFromId(filteredPokemon[0].id)}
+                {getLegendaryLabel(filteredPokemon[0].legendaryCategory)
+                  ? ` · ${getLegendaryLabel(
+                      filteredPokemon[0].legendaryCategory
+                    )}`
+                  : ''}
+              </p>
+              <p className="mt-1 text-xs font-bold text-red-600">
+                Ver ficha y dónde encontrarlo →
+              </p>
+            </div>
+          </Link>
+        )}
+
         <section className="mb-10">
           <div className="mb-3 flex items-end justify-between gap-3">
             <h2 className="text-2xl font-black text-gray-900">

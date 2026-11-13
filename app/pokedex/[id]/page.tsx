@@ -190,7 +190,10 @@ export default async function PokemonDetailPage({
               <TypeMatchupList types={detail.types} />
             </section>
 
-            <section className="rounded-2xl border border-gray-200 bg-white p-5 shadow-sm">
+            <section
+              id="donde-encontrarlo"
+              className="scroll-mt-24 rounded-2xl border border-gray-200 bg-white p-5 shadow-sm"
+            >
               <h2 className="text-xl font-black text-gray-900">
                 Dónde encontrarlo
               </h2>
@@ -198,6 +201,11 @@ export default async function PokemonDetailPage({
                 Zonas y métodos de encuentro por versión.
               </p>
               <EncounterList encounters={encounters} />
+              <p className="mt-3 rounded-xl border border-amber-200 bg-amber-50 p-3 text-xs text-amber-900">
+                <strong>¿Buscas el shiny?</strong> Puedes usar estas mismas
+                zonas; la probabilidad depende del juego y algunos encuentros
+                fijos o legendarios están bloqueados.
+              </p>
             </section>
 
             {detail.evolutionTree && (

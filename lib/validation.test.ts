@@ -27,13 +27,25 @@ describe('validación de cuenta y progreso', () => {
   it('acepta y sanea progreso válido', () => {
     const result = validateProgressData({
       caught: [1, 25, 25, 0, 2000, 3.5],
+      seen: [4, 25, 0, 2000],
       checklist: ['Completar la historia', 123, ''],
     });
 
     expect(result).toEqual({
       caught: [1, 25, 25],
+      seen: [4, 25, 1],
       checklist: ['Completar la historia'],
     });
+  });
+
+  it('considera vistos todos los Pokémon capturados', () => {
+    const result = validateProgressData({
+      caught: [1, 4],
+      seen: [7],
+      checklist: [],
+    });
+
+    expect(result?.seen).toEqual([7, 1, 4]);
   });
 
   it('sanea las notas personales por paso', () => {
@@ -50,6 +62,7 @@ describe('validación de cuenta y progreso', () => {
 
     expect(result).toEqual({
       caught: [],
+      seen: [],
       checklist: [],
       notes: { 'step:0': 'Comprar Pociones antes de entrar' },
     });
