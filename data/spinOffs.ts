@@ -1,4 +1,5 @@
 import type { GameGuide, GameGym } from '@/types/game';
+import { cobbleverseGuide } from '@/data/cobbleverse';
 
 const milestone = (
   leader: string,
@@ -9,9 +10,10 @@ const milestone = (
 ): GameGym => ({ leader, type, badge, location, tip });
 
 /**
- * Guías de spin-offs. No usan Pokédex regional (pokedexMode: 'none'), por lo
- * que la interfaz oculta la checklist de especies y se centra en la historia,
- * los jefes y los objetivos de completado.
+ * Guías de spin-offs. La mayoría no usan Pokédex regional (pokedexMode: 'none'),
+ * así que la interfaz oculta la checklist de especies y se centra en la
+ * historia, los jefes y los objetivos de completado. Cobbleverse es la
+ * excepción: usa la Pokédex Nacional de Cobblemon y el progreso de captura.
  */
 export const spinOffs: GameGuide[] = [
   {
@@ -1146,4 +1148,5 @@ export const spinOffs: GameGuide[] = [
     ],
     accent: 'from-red-700 to-yellow-600',
   },
+  cobbleverseGuide,
 ];

@@ -94,8 +94,8 @@ checklists por juego, guías paso a paso y visor 3D.
   microinteracciones y respeto a `prefers-reduced-motion`.
 - **22 guías de juegos principales** desde la Generación I hasta la IX,
   incluyendo remakes y DLC.
-- **14 guías de spin-offs**: Mystery Dungeon, Ranger, Colosseum, XD, Snap,
-  New Snap, Pokkén y Conquest.
+- **15 guías de spin-offs**: Mystery Dungeon, Ranger, Colosseum, XD, Snap,
+  New Snap, Pokkén, Conquest y Cobbleverse.
 - **Pokédex regional exacta** por juego usando los `version-group` y `pokedex`
   oficiales de PokeAPI. Ejemplos: Galar + DLC (584 especies), Paldea + DLC
   (664), Lumiose + Hiperspacial (364).
@@ -123,6 +123,10 @@ checklists por juego, guías paso a paso y visor 3D.
   localizaciones del juego, las especies capturables, método, niveles y
   probabilidad. Permite filtrar por versión y método, buscar, ocultar las ya
   capturadas y marcar visto/capturado sin salir de la ruta.
+- **Cobbleverse**: guía del modpack de Minecraft basado en Cobblemon, con
+  Pokédex Nacional de 1.025 especies, progreso visto/capturado, equipo por
+  partida, spawns por bioma y la Liga completa de Kanto a Sinnoh (32
+  gimnasios, Alto Mando y campeones).
 - **Shiny Tracker**: página `/shiny` con cacerías por Pokémon y juego,
   contador de encuentros, método, Amuleto Shiny, probabilidad acumulada y
   notas. Se sincroniza con la cuenta y tiene acceso directo desde la ficha de
@@ -277,14 +281,18 @@ Toda la información de las guías vive en:
 
 La Pokédex de cada guía se obtiene de `services/gamePokedex.ts`, que consulta el
 Pokédex regional oficial de PokeAPI (incluyendo DLC). Si PokeAPI falla, usa el
-rango nacional de `dexRange` como respaldo.
+rango nacional de `dexRange` como respaldo. Cobbleverse es la excepción: no
+tiene `version-group` de PokeAPI y usa el índice nacional completo (1-1025),
+mientras que sus encuentros se leen de `public/cobbleverse/spawns.json`.
 
 Para añadir una guía:
 
 1. Copia una entrada existente en `data/games.ts` o `data/spinOffs.ts`.
 2. Rellena el tipo `GameGuide` (`types/game.ts`).
 3. Si es un juego principal, añade su `version-group` en
-   `data/versionGroups.ts`.
+   `data/versionGroups.ts`. Para un juego sin `version-group` (como Cobbleverse)
+   usa `pokedexMode: 'regional'`, un `dexRange` válido y, si tiene spawns
+   propios, `encounterSource`.
 4. Ejecuta `npm run typecheck`, `npm test` y `npm run build`.
 
 ## Filtros avanzados
@@ -313,6 +321,22 @@ npm run data:encounters
 Los juegos sin encuentros en PokeAPI (Leyendas: Arceus, Escarlata/Púrpura y
 Leyendas: Z-A) muestran un aviso y remiten a la Pokédex, que usa WikiDex como
 fuente alternativa por Pokémon.
+
+## Spawns de Cobbleverse
+
+`public/cobbleverse/spawns.json` contiene los spawns naturales de Cobblemon
+1.8.4 (905 especies implementadas, 5.176 entradas) que usa la Pokédex de
+Cobbleverse, junto con `meta.json` (versión, commit, licencia y atribución). Se
+regenera con:
+
+```bash
+npm run data:cobbleverse
+```
+
+El generador descarga el JAR oficial de Cobblemon 1.8.4, extrae las especies y
+los spawns, y valida los conteos antes de escribir los archivos. Cobbleverse
+puede ajustar biomas, niveles y añadir especies mediante sus addons, así que la
+ficha muestra los datos base de Cobblemon como referencia.
 
 ## Traducciones de PokeAPI
 

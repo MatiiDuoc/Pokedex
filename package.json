@@ -20,7 +20,8 @@
     "data:encounters": "node scripts/generate-route-encounters.mjs",
     "data:locations": "node scripts/generate-location-names.mjs",
     "data:moves": "node scripts/generate-move-names.mjs",
-    "data:versions": "node scripts/generate-version-names.mjs"
+    "data:versions": "node scripts/generate-version-names.mjs",
+    "data:cobbleverse": "node scripts/generate-cobbleverse-data.mjs"
   },
   "dependencies": {
     "@neondatabase/serverless": "^1.2.0",
@@ -44,6 +45,7 @@
     "@types/react": "^19",
     "@types/react-dom": "^19",
     "@vitejs/plugin-react": "^6.3.0",
+    "adm-zip": "^0.6.1",
     "eslint": "^9",
     "eslint-config-next": "^16.4.5",
     "jsdom": "^31.0.0",

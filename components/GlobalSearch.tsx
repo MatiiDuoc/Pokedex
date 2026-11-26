@@ -261,7 +261,8 @@ export default function GlobalSearch({
                   <p className="mt-2 text-xs font-semibold text-gray-500">
                     {game.pokedexMode === 'none'
                       ? 'Sin Pokédex tradicional'
-                      : getVersionGroupInfo(game.slug)?.pokedexLabel ?? 'Pokédex'}
+                      : getVersionGroupInfo(game.slug)?.pokedexLabel ??
+                        game.dexScope}
                   </p>
                 </Link>
               ))}

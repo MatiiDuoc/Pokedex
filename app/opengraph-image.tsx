@@ -1,4 +1,5 @@
 import { ImageResponse } from 'next/og';
+import { games } from '@/data/games';
 
 export const alt = 'Pokédex + Guías — Completa todos los juegos Pokémon';
 export const size = {
@@ -50,7 +51,7 @@ export default function OpenGraphImage() {
           Completa todos los juegos Pokémon
         </div>
         <div style={{ marginTop: 28, fontSize: 32, color: '#cbd5e1' }}>
-          1025 especies · 36 guías · legendarios · shinies · progreso por usuario
+          {`1025 especies · ${games.length} guías · legendarios · shinies · progreso por usuario`}
         </div>
       </div>
     ),

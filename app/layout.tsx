@@ -73,8 +73,9 @@ export default function RootLayout({
               Company.
             </p>
             <p className="mt-1">
-              Datos de Pokémon: PokeAPI. Guías elaboradas a partir de la
-              información pública de los juegos.
+              Datos de Pokémon: PokeAPI. Spawns de Cobbleverse: Cobblemon 1.8.4
+              (MPL-2.0). Guías elaboradas a partir de la información pública de
+              los juegos.
             </p>
           </footer>
           <PokemonTeam />
