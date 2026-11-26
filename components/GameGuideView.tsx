@@ -94,9 +94,11 @@ export default function GameGuideView({
         ? 'Nobles derrotados'
         : game.slug === 'legends-z-a'
           ? 'Rangos Z-A'
-          : (game.category ?? 'main') === 'spin-off'
-            ? 'Progreso de desafíos'
-            : 'Caja de insignias';
+          : game.slug === 'cobbleverse'
+            ? 'Insignias y trofeos'
+            : (game.category ?? 'main') === 'spin-off'
+              ? 'Progreso de desafíos'
+              : 'Caja de insignias';
   const loginHref = `/login?next=${encodeURIComponent(`/guias/${game.slug}`)}`;
   const progressReadOnly = requiresLogin || !loaded;
   const { data: filterData } = usePokemonFilters(hasPokedex && loaded);
@@ -157,9 +159,11 @@ export default function GameGuideView({
 
     const rawTab = new URLSearchParams(window.location.search).get('tab');
     if (!rawTab || !GUIDE_TABS.includes(rawTab as GuideTabId)) return;
+    if (rawTab === 'rutas' && !versionGroup) return;
+    if ((rawTab === 'equipo' || rawTab === 'pokedex') && !hasPokedex) return;
 
     window.setTimeout(() => setActiveTab(rawTab as TabId), 0);
-  }, []);
+  }, [hasPokedex, versionGroup]);
 
   useEffect(() => {
     const nextStep = game.walkthrough.findIndex(
@@ -484,9 +488,9 @@ export default function GameGuideView({
             {hasPokedex
               ? `${pokedexLabel}: ${pokemon.length} especies. `
               : 'Guía de spin-off centrada en la historia, los jefes y los objetivos de completado. '}
-            Esta guía reúne la ruta principal, los desafíos, los legendarios,
-            las exclusivas de versión y una checklist completa para que no te
-            dejes nada.
+            {game.versionExclusives.length > 0
+              ? 'Esta guía reúne la ruta principal, los desafíos, los legendarios, las exclusivas de versión y una checklist completa para que no te dejes nada.'
+              : 'Esta guía reúne la ruta principal, los desafíos, los legendarios y una checklist completa para que no te dejes nada.'}
           </p>
 
           <div className="mt-5 flex flex-wrap gap-2">
@@ -1428,9 +1432,9 @@ export default function GameGuideView({
                     {game.eliteFourLabel}
                   </h2>
                   <div className="mt-4 grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
-                    {game.eliteFour.map((member) => (
+                    {game.eliteFour.map((member, index) => (
                       <div
-                        key={member.name}
+                        key={`${member.name}-${member.type}-${index}`}
                         className="rounded-xl bg-gray-50 p-4 text-center"
                       >
                         <TrainerAvatar
@@ -1447,7 +1451,9 @@ export default function GameGuideView({
                   <div className="mt-4 flex items-center justify-between gap-4 rounded-xl bg-gradient-to-r from-red-600 to-orange-500 p-4 text-white">
                     <div className="min-w-0">
                       <p className="text-xs font-bold uppercase tracking-wide text-white/80">
-                        Campeón / jefe final
+                        {game.slug === 'cobbleverse'
+                          ? 'Campeones regionales'
+                          : 'Campeón / jefe final'}
                       </p>
                       <p className="mt-1 text-xl font-black">{game.champion}</p>
                     </div>
@@ -1523,8 +1529,8 @@ export default function GameGuideView({
                   {pokedexLabel}
                 </h2>
                 <p className="mt-1 text-sm text-gray-600">
-                  {pokemon.length} especies del Pokédex regional oficial, incluyendo
-                  DLC cuando corresponde.
+                  {pokemon.length} especies en la Pokédex de {game.shortTitle}.
+                  Marca las que has visto y las que ya has capturado.
                 </p>
                 <p className="mt-2 text-sm text-amber-800">{game.dexNote}</p>
               </div>
@@ -1554,6 +1560,7 @@ export default function GameGuideView({
                   loaded={loaded}
                   versionGroup={versionGroup}
                   gameTitle={game.shortTitle}
+                  encounterSource={game.encounterSource ?? 'pokeapi'}
                   readOnly={progressReadOnly}
                   onToggleCaught={toggleCaught}
                   onSetCaughtMany={setCaught}

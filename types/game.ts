@@ -35,6 +35,11 @@ export interface GameGuide {
   category?: 'main' | 'spin-off';
   /** 'regional' usa el Pokédex del juego; 'none' oculta la checklist. */
   pokedexMode?: 'regional' | 'none';
+  /**
+   * Fuente de la información de encuentros. PokeAPI es la opción por defecto;
+   * 'cobblemon' usa los spawns estáticos del mod para Cobbleverse.
+   */
+  encounterSource?: 'pokeapi' | 'cobblemon';
   generation: number;
   region: string;
   platform: string;

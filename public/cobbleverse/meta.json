@@ -1,0 +1,27 @@
+{
+  "source": "https://gitlab.com/cable-mc/cobblemon",
+  "modpack": "Cobbleverse 1.8.0",
+  "cobblemonVersion": "1.8.4",
+  "cobblemonCommit": "b79dbcca802e10fb7eda89c568a874f7891a2d28",
+  "generatedAt": "2026-11-26T12:16:50.332Z",
+  "license": "MPL-2.0",
+  "attribution": "Data derived from Cobblemon (https://gitlab.com/cable-mc/cobblemon), licensed under MPL-2.0. Pokémon and related marks belong to Nintendo, Game Freak and The Pokémon Company. This is an unofficial fan project.",
+  "jar": {
+    "filename": "Cobblemon-fabric-1.8.4+1.21.1.jar",
+    "bytes": 139966403,
+    "sha1": "587973321ae6d0762b38a2e19632f5cfdce7c2df"
+  },
+  "counts": {
+    "speciesFiles": 1025,
+    "implementedSpecies": 905,
+    "speciesWithSpawns": 875,
+    "spawnFiles": 1591,
+    "rootSpawnFiles": 874,
+    "herdSpawnFiles": 717,
+    "spawnEntries": 5176,
+    "emptySpawnEntries": 2,
+    "rawSpawnEntries": 5178,
+    "spawnsJsonBytes": 1238849,
+    "spawnsJsonGzipBytes": 70528
+  }
+}

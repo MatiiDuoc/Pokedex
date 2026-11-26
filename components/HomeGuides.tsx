@@ -75,7 +75,8 @@ export default function HomeGuides({
               <p className="mt-1 text-xs text-gray-500">
                 {game.pokedexMode === 'none'
                   ? 'Sin Pokédex tradicional'
-                  : getVersionGroupInfo(game.slug)?.pokedexLabel ?? 'Pokédex'}
+                  : getVersionGroupInfo(game.slug)?.pokedexLabel ??
+                    game.dexScope}
               </p>
               <span className="mt-3 inline-flex items-center gap-1 text-sm font-bold text-red-600">
                 Abrir guía <span aria-hidden="true">→</span>

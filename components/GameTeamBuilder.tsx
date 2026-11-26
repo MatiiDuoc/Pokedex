@@ -684,7 +684,9 @@ export default function GameTeamBuilder({
 
             {!versionGroup ? (
               <p className="mt-2 text-sm text-indigo-900">
-                Este juego no tiene datos de movimientos compatibles en PokeAPI.
+                {game.slug === 'cobbleverse'
+                  ? 'Cobblemon gestiona sus movimientos y MT dentro del juego. Esta guía usa la Pokédex nacional para el equipo, pero no un version-group de PokeAPI.'
+                  : 'Este juego no tiene datos de movimientos compatibles en PokeAPI.'}
               </p>
             ) : expandedMovesState?.status === 'loading' ? (
               <p className="mt-3 inline-flex items-center gap-2 text-sm font-semibold text-indigo-900">

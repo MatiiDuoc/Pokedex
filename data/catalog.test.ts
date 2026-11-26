@@ -29,10 +29,17 @@ describe('catálogo de guías', () => {
     }
   });
 
-  it('los spin-offs están marcados sin Pokédex', () => {
+  it('los spin-offs tienen checklist y, si muestran Pokédex, un rango válido', () => {
     for (const game of games) {
       if (game.category !== 'spin-off') continue;
-      expect(game.pokedexMode, game.slug).toBe('none');
+
+      if (game.pokedexMode !== 'none') {
+        expect(game.dexRange[0], game.slug).toBeGreaterThan(0);
+        expect(game.dexRange[1], game.slug).toBeGreaterThanOrEqual(
+          game.dexRange[0]
+        );
+      }
+
       expect(game.walkthrough.length, game.slug).toBeGreaterThanOrEqual(4);
       expect(game.completionChecklist.length, game.slug).toBeGreaterThanOrEqual(5);
     }

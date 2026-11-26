@@ -262,7 +262,7 @@ export default function GameGuideList({ games }: GameGuideListProps) {
                         {game.pokedexMode === 'none'
                           ? 'Sin Pokédex'
                           : getVersionGroupInfo(game.slug)?.pokedexLabel ??
-                            `${game.dexRange[0]}-${game.dexRange[1]}`}
+                            game.dexScope}
                       </dd>
                     </div>
                     <div className="rounded-lg bg-gray-50 p-2">

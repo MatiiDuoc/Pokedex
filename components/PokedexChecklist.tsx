@@ -17,7 +17,9 @@ import {
   Sparkles,
   X,
 } from 'lucide-react';
+import CobblemonSpawnList from './CobblemonSpawnList';
 import Pagination from './Pagination';
+import { loadCobblemonSpawns } from '@/lib/cobblemon-spawns';
 import versionNamesEs from '@/lib/version-names-es.json';
 import {
   EMPTY_ADVANCED_FILTERS,
@@ -41,6 +43,7 @@ import {
 import { usePokemonFilters } from '@/lib/usePokemonFilters';
 import type { VersionEncounters } from '@/services/pokemonEncounters';
 import type { WikidexFallback } from '@/services/wikidexEncounters';
+import type { CobblemonSpawn } from '@/types/cobblemon';
 import type { PokemonIndexEntry } from '@/types/pokemon';
 
 const VERSION_NAMES_ES = versionNamesEs as Record<string, string>;
@@ -52,6 +55,7 @@ interface PokedexChecklistProps {
   loaded: boolean;
   versionGroup: string | null;
   gameTitle: string;
+  encounterSource?: 'pokeapi' | 'cobblemon';
   readOnly?: boolean;
   onToggleCaught: (id: number) => void;
   onSetCaughtMany: (ids: number[], value: boolean) => void;
@@ -78,6 +82,7 @@ export default function PokedexChecklist({
   loaded,
   versionGroup,
   gameTitle,
+  encounterSource = 'pokeapi',
   readOnly = false,
   onToggleCaught,
   onSetCaughtMany,
@@ -99,6 +104,9 @@ export default function PokedexChecklist({
   const [minTotal, setMinTotal] = useState('0');
   const [lookupId, setLookupId] = useState<number | null>(null);
   const [encounters, setEncounters] = useState<VersionEncounters[] | null>(
+    null
+  );
+  const [cobbleSpawns, setCobbleSpawns] = useState<CobblemonSpawn[] | null>(
     null
   );
   const [alternative, setAlternative] = useState<WikidexFallback | null>(null);
@@ -199,8 +207,26 @@ export default function PokedexChecklist({
   const openEncounters = async (entry: PokemonIndexEntry) => {
     setLookupId(entry.id);
     setEncounters(null);
+    setCobbleSpawns(null);
     setAlternative(null);
     setLookupError(null);
+
+    if (encounterSource === 'cobblemon') {
+      setLookupLoading(true);
+
+      try {
+        const file = await loadCobblemonSpawns();
+        setCobbleSpawns(file.spawns[String(entry.id)] ?? []);
+      } catch {
+        setLookupError(
+          'No se pudieron cargar los datos de spawn de Cobblemon.'
+        );
+      } finally {
+        setLookupLoading(false);
+      }
+
+      return;
+    }
 
     if (!versionGroup) {
       setEncounters([]);
@@ -864,7 +890,25 @@ export default function PokedexChecklist({
               </p>
             )}
 
-            {!lookupLoading && !lookupError && encounters && (
+            {!lookupLoading &&
+              !lookupError &&
+              encounterSource === 'cobblemon' &&
+              cobbleSpawns && (
+                <div className="mt-4 space-y-3">
+                  <p className="rounded-xl border border-emerald-100 bg-emerald-50 p-3 text-xs text-emerald-900">
+                    <strong>Datos de Cobblemon 1.8.4.</strong> Cobbleverse puede
+                    ajustar biomas, niveles y añadir especies con sus addons.
+                    Los porcentajes exactos dependen del peso de cada spawn y de
+                    las condiciones del mundo.
+                  </p>
+                  <CobblemonSpawnList spawns={cobbleSpawns} />
+                </div>
+              )}
+
+            {!lookupLoading &&
+              !lookupError &&
+              encounterSource !== 'cobblemon' &&
+              encounters && (
               <div className="mt-4 space-y-3">
                 {encounters.length === 0 ? (
                   alternative && alternative.versions.length > 0 ? (
@@ -954,11 +998,20 @@ export default function PokedexChecklist({
               </div>
             )}
 
-            <div className="mt-4 rounded-xl border border-amber-200 bg-amber-50 p-3 text-xs text-amber-900">
-              <strong>¿Buscas el shiny?</strong> Estas mismas zonas sirven para
-              encontrarlo; la probabilidad depende del juego y algunos
-              encuentros fijos o legendarios pueden estar bloqueados.
-            </div>
+            {encounterSource === 'cobblemon' ? (
+              <div className="mt-4 rounded-xl border border-amber-200 bg-amber-50 p-3 text-xs text-amber-900">
+                <strong>¿Buscas el shiny?</strong> En Cobblemon la tasa base es
+                1:2048; el Amuleto Shiny, las manadas y las raids pueden
+                mejorarla. Algunos legendarios y formas solo aparecen mediante
+                altares, estructuras o eventos del pack.
+              </div>
+            ) : (
+              <div className="mt-4 rounded-xl border border-amber-200 bg-amber-50 p-3 text-xs text-amber-900">
+                <strong>¿Buscas el shiny?</strong> Estas mismas zonas sirven
+                para encontrarlo; la probabilidad depende del juego y algunos
+                encuentros fijos o legendarios pueden estar bloqueados.
+              </div>
+            )}
 
             <Link
               href={`/pokedex/${lookupPokemon.id}#donde-encontrarlo`}
