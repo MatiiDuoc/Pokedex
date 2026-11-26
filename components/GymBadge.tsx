@@ -46,7 +46,13 @@ export default function GymBadge({
               ? 'w-20'
               : 'w-28'
           : ''
-      } ${obtained ? 'drop-shadow-[0_0_10px_rgba(251,191,36,0.45)]' : 'opacity-45 grayscale'}`}
+      } ${
+        obtained
+          ? 'drop-shadow-[0_0_10px_rgba(251,191,36,0.45)]'
+          : visual.pixelated
+            ? 'opacity-60 saturate-50'
+            : 'opacity-45 grayscale'
+      }`}
     >
       {hasImage ? (
         <span className="flex items-center justify-center gap-0.5">
