@@ -338,6 +338,15 @@ los spawns, y valida los conteos antes de escribir los archivos. Cobbleverse
 puede ajustar biomas, niveles y añadir especies mediante sus addons, así que la
 ficha muestra los datos base de Cobblemon como referencia.
 
+## Insignias de Cobbleverse
+
+La guía usa las **32 insignias y los 4 trofeos originales** de
+[COBBLEVERSE: Badges & Trophies v1.3](https://modrinth.com/mod/cobbleverse-badges),
+creados por LUMYVERSE. Las texturas están en `public/cobbleverse/badges/` sin
+modificar y se distribuyen bajo **CC BY-NC-ND 4.0** para este proyecto fan no
+comercial. Cada gimnasio queda asociado a su insignia mediante
+`lib/cobbleverse-badges.ts`.
+
 ## Traducciones de PokeAPI
 
 PokeAPI devuelve los nombres de movimientos, versiones y zonas en inglés. El

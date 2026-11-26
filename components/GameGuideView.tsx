@@ -16,6 +16,7 @@ import {
   Compass,
   NotebookPen,
 } from 'lucide-react';
+import CobbleverseTrophies from './CobbleverseTrophies';
 import GameTeamBuilder from './GameTeamBuilder';
 import GymBadge from './GymBadge';
 import PokedexChecklist from './PokedexChecklist';
@@ -1432,20 +1433,34 @@ export default function GameGuideView({
                     {game.eliteFourLabel}
                   </h2>
                   <div className="mt-4 grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
-                    {game.eliteFour.map((member, index) => (
-                      <div
-                        key={`${member.name}-${member.type}-${index}`}
-                        className="rounded-xl bg-gray-50 p-4 text-center"
-                      >
-                        <TrainerAvatar
-                          name={member.name}
-                          size="lg"
-                          className="mx-auto mb-2"
-                        />
-                        <p className="font-bold text-gray-900">{member.name}</p>
-                        <p className="mt-1 text-sm text-gray-600">{member.type}</p>
-                      </div>
-                    ))}
+                    {game.eliteFour.map((member, index) => {
+                      const visual = getGymTypeVisual(member.type);
+
+                      return (
+                        <div
+                          key={`${member.name}-${member.type}-${index}`}
+                          className="rounded-xl bg-gray-50 p-4 text-center"
+                        >
+                          {hasTrainerSprite(member.name) ? (
+                            <TrainerAvatar
+                              name={member.name}
+                              size="lg"
+                              className="mx-auto mb-2"
+                            />
+                          ) : visual ? (
+                            // eslint-disable-next-line @next/next/no-img-element
+                            <img
+                              src={visual.artworkUrl}
+                              alt={visual.name}
+                              loading="lazy"
+                              className="mx-auto mb-2 h-20 w-20 object-contain"
+                            />
+                          ) : null}
+                          <p className="font-bold text-gray-900">{member.name}</p>
+                          <p className="mt-1 text-sm text-gray-600">{member.type}</p>
+                        </div>
+                      );
+                    })}
                   </div>
 
                   <div className="mt-4 flex items-center justify-between gap-4 rounded-xl bg-gradient-to-r from-red-600 to-orange-500 p-4 text-white">
@@ -1457,11 +1472,15 @@ export default function GameGuideView({
                       </p>
                       <p className="mt-1 text-xl font-black">{game.champion}</p>
                     </div>
-                    <TrainerAvatar
-                      name={game.champion}
-                      size="lg"
-                      className="flex-none"
-                    />
+                    {game.slug === 'cobbleverse' ? (
+                      <CobbleverseTrophies className="flex-none" />
+                    ) : (
+                      <TrainerAvatar
+                        name={game.champion}
+                        size="lg"
+                        className="flex-none"
+                      />
+                    )}
                   </div>
                 </div>
               )}

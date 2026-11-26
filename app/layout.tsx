@@ -74,8 +74,8 @@ export default function RootLayout({
             </p>
             <p className="mt-1">
               Datos de Pokémon: PokeAPI. Spawns de Cobbleverse: Cobblemon 1.8.4
-              (MPL-2.0). Guías elaboradas a partir de la información pública de
-              los juegos.
+              (MPL-2.0). Insignias de Cobbleverse: LUMYVERSE (CC BY-NC-ND 4.0).
+              Guías elaboradas a partir de la información pública de los juegos.
             </p>
           </footer>
           <PokemonTeam />

@@ -63,7 +63,7 @@ export default function GymBadge({
                 isItemSprite
                   ? 'scale-125 [image-rendering:pixelated]'
                   : ''
-              }`}
+              } ${visual.pixelated ? '[image-rendering:pixelated]' : ''}`}
             />
           ))}
         </span>

@@ -129,7 +129,7 @@ export const cobbleverseGuide: GameGuide = {
     { name: 'Vulcano', type: 'Fuego' },
     { name: 'Luciano', type: 'Psíquico' },
   ],
-  champion: 'Blue, Lance, Rocco y Camilla (campeones regionales)',
+  champion: 'Blue, Lance, Rocco y Camilla',
   walkthrough: [
     {
       title: 'Instala Cobbleverse y abre tu mundo',

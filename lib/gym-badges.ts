@@ -1,3 +1,4 @@
+import { getCobbleverseBadgeUrl } from '@/lib/cobbleverse-badges';
 import type { GameGym } from '@/types/game';
 
 const BADGE_BASE =
@@ -10,6 +11,8 @@ export interface GymBadgeVisual {
   fallbackText?: string;
   type: string;
   label: string;
+  /** Las texturas de Cobbleverse son pixel art y necesitan nearest-neighbor. */
+  pixelated?: boolean;
 }
 
 type BadgeEntry = number | string | number[];
@@ -71,6 +74,18 @@ export function getGymBadgeVisual(
   gymIndex: number,
   gym: GameGym
 ): GymBadgeVisual {
+  if (gameSlug === 'cobbleverse') {
+    const imageUrl = getCobbleverseBadgeUrl(gym.badge);
+    if (imageUrl) {
+      return {
+        imageUrls: [imageUrl],
+        pixelated: true,
+        type: gym.type,
+        label: gym.badge,
+      };
+    }
+  }
+
   const entry = BADGE_ENTRIES[gameSlug]?.[gymIndex];
   let imageUrls: string[] = [];
 
